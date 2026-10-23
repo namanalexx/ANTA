@@ -1,0 +1,94 @@
+name: anta
+
+x-node: &node
+  image: anta-node:latest
+  build:
+    context: ../devices
+  cap_add:
+    - NET_ADMIN
+  init: true
+  restart: "no"
+
+networks:
+  net_client:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.10.1.0/24
+  net_core:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.10.2.0/24
+  net_servers:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.10.3.0/24
+
+services:
+  client:
+    <<: *node
+    container_name: client
+    hostname: client
+    networks:
+      net_client:
+        ipv4_address: 10.10.1.10
+    environment:
+      ROUTES: "default via 10.10.1.2"
+
+  router:
+    <<: *node
+    container_name: router
+    hostname: router
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      net_client:
+        ipv4_address: 10.10.1.2
+      net_core:
+        ipv4_address: 10.10.2.2
+    environment:
+      ROUTES: "10.10.3.0/24 via 10.10.2.3"
+
+  firewall:
+    <<: *node
+    container_name: firewall
+    hostname: firewall
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      net_core:
+        ipv4_address: 10.10.2.3
+      net_servers:
+        ipv4_address: 10.10.3.2
+    environment:
+      ROUTES: "10.10.1.0/24 via 10.10.2.2"
+
+  dns-server:
+    <<: *node
+    container_name: dns-server
+    hostname: dns-server
+    networks:
+      net_servers:
+        ipv4_address: 10.10.3.10
+    environment:
+      ROLE: dns
+      ROUTES: "default via 10.10.3.2"
+
+  web-server:
+    <<: *node
+    container_name: web-server
+    hostname: web-server
+    networks:
+      net_servers:
+        ipv4_address: 10.10.3.20
+    environment:
+      ROLE: web
+      ROUTES: "default via 10.10.3.2"
