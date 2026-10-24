@@ -15,7 +15,7 @@
     "action": "DROP"
   },
   "ground_truth": {
-    "device": "router",
+    "device": "none",
     "layer": "-",
     "cause": "no_fault",
     "evidence_required": []

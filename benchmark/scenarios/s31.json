@@ -1,0 +1,31 @@
+{
+  "id": "s31",
+  "description": "DNS record points to a different wrong IP",
+  "tier": "B_variant",
+  "split": "test",
+  "symptom": "web.anta.local leads to a page that never opens, though the server is healthy.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "dns_failure",
+    "device": "dns-server",
+    "mechanism": "dns_wrong_ip",
+    "wrong_ip": "10.10.1.99"
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "APP",
+    "cause": "dns_failure",
+    "evidence_required": [
+      "dns_ip_correct"
+    ]
+  },
+  "remediation": {
+    "action": "restore_dns_record",
+    "device": "dns-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

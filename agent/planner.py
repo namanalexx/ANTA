@@ -27,6 +27,7 @@ class Ctx:
     ip_to_node: dict
     attached: dict
     all_subnets: list
+    web_ip: str = ""
 
     def missing_routes(self, node: str, routes: list) -> list:
         dests = {r["dest"] for r in routes}
@@ -43,7 +44,8 @@ def build_context(topo: dict) -> Ctx:
     for link in topo["links"]:
         for m in link["members"]:
             attached.setdefault(m, set()).add(link["subnet"])
-    return Ctx(topo, ip_to_node, attached, [l["subnet"] for l in topo["links"]])
+    return Ctx(topo, ip_to_node, attached, [l["subnet"] for l in topo["links"]],
+               next(iter(ips["web-server"].values()), ""))
 
 
 def build_catalog(ctx: Ctx) -> dict:
@@ -68,10 +70,11 @@ def build_catalog(ctx: Ctx) -> dict:
                       ["trace_reached:client->web-server", "trace_last_hop:client->web-server"]))
     tests.append(Test("dns_query", "Ask the DNS server to resolve web.anta.local (from client)", "inspect_dns",
                       {"server": dns, "host": "web.anta.local", "src": "client"},
-                      ["dns_resolves", "dns_error"]))
-    for node in ("router", "firewall"):
+                      ["dns_resolves", "dns_error", "dns_ip_correct"]))
+    for node in ("client", "router", "firewall", "dns-server", "web-server"):
         tests.append(Test(f"routes_{node}", f"Check the {node} routing table for missing routes",
                           "get_route_table", {"node": node}, [f"route_complete:{node}"], {"node": node}))
+    for node in ("router", "firewall"):
         tests.append(Test(f"fw_{node}", f"Inspect {node} firewall rules and hit counters",
                           "inspect_firewall", {"node": node},
                           [f"fw_has_drop:{node}", f"fw_drop_hits:{node}"], {"node": node}))
@@ -115,7 +118,10 @@ def _x_trace(t, r, ctx):
 def _x_dns(t, r, ctx):
     f = {"dns_resolves": r["resolved"], "dns_error": r["error"] or "none"}
     if r["resolved"]:
-        return f"dns {r['host']} via {r['server']}: resolved to {r['ip']}", f
+        correct = r["ip"] == ctx.web_ip
+        f["dns_ip_correct"] = correct
+        note = "" if correct else f" (WRONG: web server is {ctx.web_ip})"
+        return f"dns {r['host']} via {r['server']}: resolved to {r['ip']}{note}", f
     return f"dns {r['host']} via {r['server']}: FAILED ({r['error']})", f
 
 
@@ -128,19 +134,45 @@ def _x_routes(t, r, ctx):
     return f"routes {node}: complete (all subnets reachable)", f
 
 
+_FLOWS = [("tcp", 80), ("udp", 53), ("icmp", None)]  # the flows this lab cares about: http, dns, ping
+
+
+def _port_match(spec, port):
+    if spec is None or port is None:
+        return True
+    try:
+        if ":" in str(spec):
+            lo, hi = str(spec).split(":", 1)
+            return int(lo or 0) <= port <= int(hi or 65535)
+        return int(spec) == port
+    except ValueError:
+        return False
+
+
+def _blocks_relevant_flow(rule):
+    for proto, port in _FLOWS:
+        dport = None if proto == "icmp" else rule["dport"]
+        if rule["protocol"] in ("all", proto) and _port_match(dport, port):
+            return True
+    return False
+
+
 def _x_fw(t, r, ctx):
     node = t.meta["node"]
     drops = [(c["name"], x) for c in r["chains"] for x in c["rules"] if x["target"] in ("DROP", "REJECT")]
+    relevant = [(c, x) for c, x in drops if _blocks_relevant_flow(x)]
     policy = [c["name"] for c in r["chains"]
               if c["policy"] in ("DROP", "REJECT") and c["name"] in ("INPUT", "FORWARD")]
-    has_drop = bool(drops or policy)
+    has_drop = bool(relevant or policy)
     f = {f"fw_has_drop:{node}": has_drop}
-    if any(x["packets"] > 0 for _, x in drops):
+    if any(x["packets"] > 0 for _, x in relevant):
         f[f"fw_drop_hits:{node}"] = True  # zero hits is not evidence against a rule, so only emit when True
+    ignored = len(drops) - len(relevant)
+    note = f" ({ignored} other DROP/REJECT rule(s) do not affect http/dns/ping)" if ignored else ""
     if not has_drop:
-        return f"firewall {node}: no DROP/REJECT rules, policies ACCEPT", f
-    parts = [f"{c}: {x['spec']} (hits {x['packets']})" for c, x in drops] + [f"policy DROP on {c}" for c in policy]
-    return f"firewall {node}: " + "; ".join(parts), f
+        return f"firewall {node}: no rule blocks http/dns/ping, policies ACCEPT{note}", f
+    parts = [f"{c}: {x['spec']} (hits {x['packets']})" for c, x in relevant] + [f"policy DROP on {c}" for c in policy]
+    return f"firewall {node}: " + "; ".join(parts) + note, f
 
 
 def _x_svc(t, r, ctx):

@@ -53,6 +53,8 @@ def inject(fault: dict) -> None:
         if action == "REJECT" and fault["protocol"] == "tcp":
             spec += " --reject-with tcp-reset"
         sh(dev, f"iptables -I FORWARD {spec}")
+    elif mech == "iptables_policy":
+        sh(dev, f"iptables -P {fault.get('chain', 'FORWARD')} DROP")
     elif mech == "service_stop":
         _stop(dev, fault["process"])
     elif mech == "nginx_503":

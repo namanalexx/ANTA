@@ -2,7 +2,7 @@
   "id": "s16",
   "description": "Web service up but returns HTTP 503",
   "tier": "B_variant",
-  "split": "test",
+  "split": "dev",
   "symptom": "The web server answers with errors instead of the page.",
   "topology": "standard_5node",
   "injected_fault": {

@@ -24,7 +24,7 @@ DEFAULT_SYMPTOM = "Users on the client cannot load the web server at web.anta.lo
 @dataclass
 class Case:
     symptom: str
-    max_steps: int = 14
+    max_steps: int = 20
     verbose: bool = True
     store: EvidenceStore = field(default_factory=EvidenceStore)
     hyps: list = field(default_factory=list)
@@ -88,17 +88,28 @@ def node_decide(state: State) -> dict:
 
 
 def _confirmation_test(case):
-    """Leader >= threshold but no decisive evidence yet: return the unrun test with its strongest prediction."""
+    """Leader >= threshold but not yet provable: return the unrun test that settles it fastest."""
     top = leader(case.hyps)
-    if top.confidence < CONFIRM_THRESHOLD or any(l.lr >= DECISIVE_LR for l in top.supporting_evidence):
+    if top.confidence < CONFIRM_THRESHOLD:
         return None
+    unrun = [t for t in case.catalog.values() if t.id not in case.executed]
     best = None
-    for t in case.catalog.values():
-        if t.id in case.executed:
-            continue
-        lr = max((top.predictions[k].lr for k in t.keys if k in top.predictions), default=0)
-        if lr >= DECISIVE_LR and (best is None or lr > best[0]):
-            best = (lr, t)
+    if top.cause == "no_fault":
+        # prove 'healthy' by decisively ruling out every remaining fault hypothesis
+        open_h = [h for h in case.hyps if h is not top
+                  and not any(l.lr >= DECISIVE_LR for l in h.contradicting_evidence)]
+        for t in unrun:
+            n = sum(1 for h in open_h
+                    if any(k in h.predictions and h.predictions[k].lr >= DECISIVE_LR for k in t.keys))
+            if n and (best is None or n > best[0]):
+                best = (n, t)
+    else:
+        if any(l.lr >= DECISIVE_LR for l in top.supporting_evidence):
+            return None
+        for t in unrun:
+            lr = max((top.predictions[k].lr for k in t.keys if k in top.predictions), default=0)
+            if lr >= DECISIVE_LR and (best is None or lr > best[0]):
+                best = (lr, t)
     return best[1] if best else None
 
 
@@ -246,7 +257,7 @@ def build_graph():
 _APP = None
 
 
-def run_agent(symptom: str = DEFAULT_SYMPTOM, max_steps: int = 14, verbose: bool = True) -> dict:
+def run_agent(symptom: str = DEFAULT_SYMPTOM, max_steps: int = 20, verbose: bool = True) -> dict:
     global _APP
     if _APP is None:
         _APP = build_graph()
@@ -272,7 +283,7 @@ def main(argv: list) -> int:
     args = list(argv)
     verbose = "--quiet" not in args
     as_json = "--json" in args
-    max_steps = 14
+    max_steps = 20
     if "--max-steps" in args:
         i = args.index("--max-steps")
         max_steps = int(args[i + 1])

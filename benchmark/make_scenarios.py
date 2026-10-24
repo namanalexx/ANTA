@@ -7,7 +7,7 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent / "scenarios"
 WEB = "Users on the client cannot load the web server at web.anta.local."
 VERIFY = ["ping_success", "http_200", "dns_resolves"]
-DEV = {"s01", "s02", "s03", "s04", "s05", "s06", "s07", "s10", "s12", "s14", "s18", "s20"}
+DEV = {"s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s12", "s14", "s16", "s17", "s18", "s20"}
 
 
 def route(dev, dest):
@@ -37,6 +37,7 @@ def remediation(f):
         "service_stop": {"action": "start_service", "device": d, "service": f.get("process")},
         "nginx_503": {"action": "restore_service_config", "device": d},
         "dns_wrong_ip": {"action": "restore_dns_record", "device": d},
+        "iptables_policy": {"action": "restore_policy", "device": d},
     }[m]
 
 
@@ -71,6 +72,20 @@ SPECS = [
     ("s23", "A_phrasing", "web.anta.local does not resolve.", "DNS service stopped (different wording)", stop("dns-server", "dnsmasq", "dns_failure"), ["svc_up:dns-server:dns"]),
     ("s24", "A_phrasing", "The client cannot ping any server.", "Router lost its route (different wording)", route("router", "10.10.3.0/24"), ["route_complete:router"]),
     ("s25", "A_phrasing", "The web page hangs forever when opened from the client.", "Firewall drops tcp/80 (different wording)", fw("firewall", "tcp", 80), ["fw_has_drop:firewall"]),
+    ("s26", "A_phrasing", "Pings to the web server get no reply.", "Firewall lost its return route (fresh wording)", route("firewall", "10.10.1.0/24"), ["route_complete:firewall"]),
+    ("s27", "B_variant", "Name lookups for web.anta.local fail instantly.", "Firewall REJECTs udp/53", fw("firewall", "udp", 53, "REJECT"), ["fw_has_drop:firewall"]),
+    ("s28", "B_variant", "Every web connection hangs, but ping works.", "Router drops all TCP", fw("router", "tcp"), ["fw_has_drop:router"]),
+    ("s29", "A_phrasing", "Lookups for web.anta.local are being refused.", "DNS service stopped (fresh wording)", stop("dns-server", "dnsmasq", "dns_failure"), ["svc_up:dns-server:dns"]),
+    ("s30", "B_variant", "Customers see error pages from the web server.", "Web service returns HTTP 503 (fresh wording)",
+     {"type": "service_failure", "device": "web-server", "mechanism": "nginx_503"}, ["svc_local_ok:web-server"]),
+    ("s31", "B_variant", "web.anta.local leads to a page that never opens, though the server is healthy.", "DNS record points to a different wrong IP",
+     {"type": "dns_failure", "device": "dns-server", "mechanism": "dns_wrong_ip", "wrong_ip": "10.10.1.99"}, ["dns_ip_correct"]),
+    ("s32", "C_control", "Page loads feel slow today. Is something broken?", "Healthy network (control)", NONE, []),
+    ("s33", "C_control", "Some users report occasional failures reaching web.anta.local.", "Harmless firewall rule (tcp/8080) is a distractor",
+     fw("firewall", "tcp", 8080, typ="no_fault"), []),
+    ("s34", "B_variant", "The client lost access to everything beyond its own subnet.", "Client lost its default route (fresh wording)", route("client", "default"), ["route_complete:client"]),
+    ("s35", "B_variant", "All traffic through the firewall is being silently discarded.", "Firewall FORWARD policy set to DROP",
+     {"type": "firewall_block", "device": "firewall", "mechanism": "iptables_policy", "chain": "FORWARD"}, ["fw_has_drop:firewall"]),
 ]
 
 
@@ -84,12 +99,12 @@ def main() -> None:
         sc = {
             "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else "test",
             "symptom": symptom, "topology": "standard_5node", "injected_fault": fault,
-            "ground_truth": {"device": fault.get("device") or "none", "layer": LAYER[typ], "cause": typ,
+            "ground_truth": {"device": "none" if typ == "no_fault" else fault.get("device"), "layer": LAYER[typ], "cause": typ,
                              "evidence_required": req},
             "remediation": remediation(fault), "verification_tests": VERIFY,
         }
         (OUT / f"{sid}.json").write_text(json.dumps(sc, indent=2))
-    assert len(SPECS) == 25 and len(types) <= 6, "scope cap violated"
+    assert len(SPECS) == 35 and len(types) <= 6, "scope cap violated"
     print(f"wrote {len(SPECS)} scenarios to {OUT}")
     print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV)}")
 

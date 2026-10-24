@@ -2,7 +2,7 @@
   "id": "s17",
   "description": "DNS record points to the wrong IP",
   "tier": "B_variant",
-  "split": "test",
+  "split": "dev",
   "symptom": "web.anta.local opens nothing even though the web server is up.",
   "topology": "standard_5node",
   "injected_fault": {

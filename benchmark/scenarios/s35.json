@@ -1,0 +1,31 @@
+{
+  "id": "s35",
+  "description": "Firewall FORWARD policy set to DROP",
+  "tier": "B_variant",
+  "split": "test",
+  "symptom": "All traffic through the firewall is being silently discarded.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "firewall_block",
+    "device": "firewall",
+    "mechanism": "iptables_policy",
+    "chain": "FORWARD"
+  },
+  "ground_truth": {
+    "device": "firewall",
+    "layer": "L4",
+    "cause": "firewall_block",
+    "evidence_required": [
+      "fw_has_drop:firewall"
+    ]
+  },
+  "remediation": {
+    "action": "restore_policy",
+    "device": "firewall"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}
