@@ -1,0 +1,154 @@
+{
+  "model": "qwen2.5:7b",
+  "runs": [
+    {
+      "fault": "broken_route",
+      "round": 1,
+      "truth": {
+        "device": "router",
+        "layer": "L3",
+        "cause": "broken_route"
+      },
+      "predicted": {
+        "hypothesis_id": "H1",
+        "cause": "broken_route",
+        "device": "router",
+        "layer": "L3",
+        "confidence": 1.0,
+        "status": "confirmed"
+      },
+      "cause_ok": true,
+      "device_ok": true,
+      "layer_ok": true,
+      "confirmed": true,
+      "stats": {
+        "tool_calls": 14,
+        "llm_calls": 14,
+        "llm_fallbacks": 0,
+        "citations_repaired": false,
+        "steps": 13,
+        "seconds": 33.7,
+        "model": "qwen2.5:7b",
+        "concluded_by": "evidence_threshold"
+      },
+      "evidence_ids": [
+        "E14",
+        "E8",
+        "E11",
+        "E10"
+      ],
+      "error": null,
+      "restored_ok": true
+    },
+    {
+      "fault": "firewall_block",
+      "round": 1,
+      "truth": {
+        "device": "firewall",
+        "layer": "L4",
+        "cause": "firewall_block"
+      },
+      "predicted": {
+        "hypothesis_id": "H3",
+        "cause": "firewall_block",
+        "device": "firewall",
+        "layer": "L4",
+        "confidence": 1.0,
+        "status": "confirmed"
+      },
+      "cause_ok": true,
+      "device_ok": true,
+      "layer_ok": true,
+      "confirmed": true,
+      "stats": {
+        "tool_calls": 13,
+        "llm_calls": 13,
+        "llm_fallbacks": 0,
+        "citations_repaired": false,
+        "steps": 12,
+        "seconds": 26.3,
+        "model": "qwen2.5:7b",
+        "concluded_by": "evidence_threshold"
+      },
+      "evidence_ids": [
+        "E13",
+        "E5"
+      ],
+      "error": null,
+      "restored_ok": true
+    },
+    {
+      "fault": "dns_failure",
+      "round": 1,
+      "truth": {
+        "device": "dns-server",
+        "layer": "APP",
+        "cause": "dns_failure"
+      },
+      "predicted": {
+        "hypothesis_id": "H5",
+        "cause": "dns_failure",
+        "device": "dns-server",
+        "layer": "APP",
+        "confidence": 0.9846,
+        "status": "confirmed"
+      },
+      "cause_ok": true,
+      "device_ok": true,
+      "layer_ok": true,
+      "confirmed": true,
+      "stats": {
+        "tool_calls": 3,
+        "llm_calls": 3,
+        "llm_fallbacks": 0,
+        "citations_repaired": false,
+        "steps": 2,
+        "seconds": 9.9,
+        "model": "qwen2.5:7b",
+        "concluded_by": "evidence_threshold"
+      },
+      "evidence_ids": [
+        "E3"
+      ],
+      "error": null,
+      "restored_ok": true
+    },
+    {
+      "fault": "service_failure",
+      "round": 1,
+      "truth": {
+        "device": "web-server",
+        "layer": "L7",
+        "cause": "service_failure"
+      },
+      "predicted": {
+        "hypothesis_id": "H6",
+        "cause": "service_failure",
+        "device": "web-server",
+        "layer": "L7",
+        "confidence": 0.9996,
+        "status": "confirmed"
+      },
+      "cause_ok": true,
+      "device_ok": true,
+      "layer_ok": true,
+      "confirmed": true,
+      "stats": {
+        "tool_calls": 3,
+        "llm_calls": 3,
+        "llm_fallbacks": 0,
+        "citations_repaired": false,
+        "steps": 2,
+        "seconds": 9.9,
+        "model": "qwen2.5:7b",
+        "concluded_by": "evidence_threshold"
+      },
+      "evidence_ids": [
+        "E3",
+        "E2"
+      ],
+      "error": null,
+      "restored_ok": true
+    }
+  ]
+}
