@@ -1,0 +1,32 @@
+{
+  "id": "s09",
+  "description": "DNS server lost its default route (replies cannot return)",
+  "tier": "B_variant",
+  "split": "test",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "broken_route",
+    "device": "dns-server",
+    "mechanism": "route_delete",
+    "dest": "default"
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "L3",
+    "cause": "broken_route",
+    "evidence_required": [
+      "route_complete:dns-server"
+    ]
+  },
+  "remediation": {
+    "action": "restore_route",
+    "device": "dns-server",
+    "dest": "default"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

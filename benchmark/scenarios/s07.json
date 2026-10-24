@@ -1,0 +1,32 @@
+{
+  "id": "s07",
+  "description": "Client lost its default route",
+  "tier": "B_variant",
+  "split": "dev",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "broken_route",
+    "device": "client",
+    "mechanism": "route_delete",
+    "dest": "default"
+  },
+  "ground_truth": {
+    "device": "client",
+    "layer": "L3",
+    "cause": "broken_route",
+    "evidence_required": [
+      "route_complete:client"
+    ]
+  },
+  "remediation": {
+    "action": "restore_route",
+    "device": "client",
+    "dest": "default"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

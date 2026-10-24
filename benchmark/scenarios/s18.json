@@ -1,0 +1,25 @@
+{
+  "id": "s18",
+  "description": "Healthy network (control)",
+  "tier": "C_control",
+  "split": "dev",
+  "symptom": "A user reported they could not load the web server earlier. Please check.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "no_fault",
+    "device": null,
+    "mechanism": "none"
+  },
+  "ground_truth": {
+    "device": "none",
+    "layer": "-",
+    "cause": "no_fault",
+    "evidence_required": []
+  },
+  "remediation": null,
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

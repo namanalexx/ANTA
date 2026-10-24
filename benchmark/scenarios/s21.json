@@ -1,0 +1,29 @@
+{
+  "id": "s21",
+  "description": "Harmless router rule (udp/9999) is a distractor",
+  "tier": "C_control",
+  "split": "test",
+  "symptom": "Users report intermittent problems reaching web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "no_fault",
+    "device": "router",
+    "mechanism": "iptables",
+    "chain": "FORWARD",
+    "protocol": "udp",
+    "port": 9999,
+    "action": "DROP"
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "-",
+    "cause": "no_fault",
+    "evidence_required": []
+  },
+  "remediation": null,
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

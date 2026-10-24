@@ -1,0 +1,32 @@
+{
+  "id": "s06",
+  "description": "Web service stopped",
+  "tier": "A_seen",
+  "split": "dev",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "service_failure",
+    "device": "web-server",
+    "mechanism": "service_stop",
+    "process": "nginx"
+  },
+  "ground_truth": {
+    "device": "web-server",
+    "layer": "L7",
+    "cause": "service_failure",
+    "evidence_required": [
+      "svc_up:web-server:web"
+    ]
+  },
+  "remediation": {
+    "action": "start_service",
+    "device": "web-server",
+    "service": "nginx"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

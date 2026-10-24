@@ -1,0 +1,30 @@
+{
+  "id": "s16",
+  "description": "Web service up but returns HTTP 503",
+  "tier": "B_variant",
+  "split": "test",
+  "symptom": "The web server answers with errors instead of the page.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "service_failure",
+    "device": "web-server",
+    "mechanism": "nginx_503"
+  },
+  "ground_truth": {
+    "device": "web-server",
+    "layer": "L7",
+    "cause": "service_failure",
+    "evidence_required": [
+      "svc_local_ok:web-server"
+    ]
+  },
+  "remediation": {
+    "action": "restore_service_config",
+    "device": "web-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

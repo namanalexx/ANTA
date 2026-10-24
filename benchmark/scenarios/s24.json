@@ -1,0 +1,32 @@
+{
+  "id": "s24",
+  "description": "Router lost its route (different wording)",
+  "tier": "A_phrasing",
+  "split": "test",
+  "symptom": "The client cannot ping any server.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "broken_route",
+    "device": "router",
+    "mechanism": "route_delete",
+    "dest": "10.10.3.0/24"
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L3",
+    "cause": "broken_route",
+    "evidence_required": [
+      "route_complete:router"
+    ]
+  },
+  "remediation": {
+    "action": "restore_route",
+    "device": "router",
+    "dest": "10.10.3.0/24"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

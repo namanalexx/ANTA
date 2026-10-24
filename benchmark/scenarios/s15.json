@@ -1,0 +1,34 @@
+{
+  "id": "s15",
+  "description": "Router REJECTs tcp/80 with a reset",
+  "tier": "B_variant",
+  "split": "test",
+  "symptom": "Connections from the client to the web server are immediately refused.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "firewall_block",
+    "device": "router",
+    "mechanism": "iptables",
+    "chain": "FORWARD",
+    "protocol": "tcp",
+    "port": 80,
+    "action": "REJECT"
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L4",
+    "cause": "firewall_block",
+    "evidence_required": [
+      "fw_has_drop:router"
+    ]
+  },
+  "remediation": {
+    "action": "remove_firewall_rule",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

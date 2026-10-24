@@ -1,0 +1,32 @@
+{
+  "id": "s23",
+  "description": "DNS service stopped (different wording)",
+  "tier": "A_phrasing",
+  "split": "test",
+  "symptom": "web.anta.local does not resolve.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "dns_failure",
+    "device": "dns-server",
+    "mechanism": "service_stop",
+    "process": "dnsmasq"
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "APP",
+    "cause": "dns_failure",
+    "evidence_required": [
+      "svc_up:dns-server:dns"
+    ]
+  },
+  "remediation": {
+    "action": "start_service",
+    "device": "dns-server",
+    "service": "dnsmasq"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

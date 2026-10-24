@@ -162,6 +162,23 @@ def build_hypotheses() -> list:
             ("trace_reached:client->web-server", T, 2),
             ("fw_has_drop:firewall", F, 3),
         ]),
+        _h("H0", "no_fault", "none", "-", "No fault: the network and services are healthy", [
+            ("reach:client->router", T, 2),
+            ("reach:client->firewall", T, 3),
+            ("reach:client->dns-server", T, 4),
+            ("reach:client->web-server", T, 6),
+            ("dns_resolves", T, 6),
+            ("route_complete:router", T, 4),
+            ("route_complete:firewall", T, 4),
+            ("svc_up:web-server:web", T, 12),
+            ("svc_up:dns-server:dns", T, 12),
+            ("svc_local_ok:web-server", T, 6),
+            ("fw_has_drop:firewall", F, 4),
+            ("fw_has_drop:router", F, 4),
+            ("cap:web-server:tcp_handshake_seen", T, 8),
+            ("cap:firewall:tcp_handshake_seen", T, 4),
+            ("trace_reached:client->web-server", T, 3),
+        ]),
     ]
     recompute(hyps)
     return hyps
