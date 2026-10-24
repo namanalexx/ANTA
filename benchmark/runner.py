@@ -17,7 +17,12 @@ from . import ROOT
 from .evaluator import connect, evaluate, insert, report
 
 SCEN_DIR = ROOT / "benchmark" / "scenarios"
-SYSTEMS = {"anta": lambda symptom: run_agent(symptom, verbose=False)}
+from experiments.baseline_llm_only import run_llm_only  # noqa: E402
+from experiments.baseline_react import run_react  # noqa: E402
+
+SYSTEMS = {"anta": lambda symptom: run_agent(symptom, verbose=False),
+           "llm_only": run_llm_only,
+           "react": run_react}
 
 
 def healthy() -> bool:
