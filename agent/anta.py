@@ -13,7 +13,8 @@ from tools import TOOLS, to_dict
 
 from . import llm
 from .hypotheses import (
-    EvidenceStore, apply_findings, build_hypotheses, leader, ready_to_conclude, refresh_tests_remaining,
+    CONFIRM_THRESHOLD, DECISIVE_LR, EvidenceStore, apply_findings, build_hypotheses, leader,
+    ready_to_conclude, refresh_tests_remaining,
 )
 from .planner import build_catalog, build_context, choose_test, rank_tests, run_test
 
@@ -86,8 +87,28 @@ def node_decide(state: State) -> dict:
     return {"case": case, "decision": decision}
 
 
+def _confirmation_test(case):
+    """Leader >= threshold but no decisive evidence yet: return the unrun test with its strongest prediction."""
+    top = leader(case.hyps)
+    if top.confidence < CONFIRM_THRESHOLD or any(l.lr >= DECISIVE_LR for l in top.supporting_evidence):
+        return None
+    best = None
+    for t in case.catalog.values():
+        if t.id in case.executed:
+            continue
+        lr = max((top.predictions[k].lr for k in t.keys if k in top.predictions), default=0)
+        if lr >= DECISIVE_LR and (best is None or lr > best[0]):
+            best = (lr, t)
+    return best[1] if best else None
+
+
 def node_plan(state: State) -> dict:
     case = state["case"]
+    confirm = _confirmation_test(case)
+    if confirm:
+        case.pending, case.pending_llm = confirm, False
+        case.pending_reason = "confirm leading hypothesis with its most decisive test (rule-based)"
+        return {"case": case}
     ranked = rank_tests(case.catalog, case.executed, case.hyps)
     lines = [f"{e.id}: {e.summary}" for e in case.store.all()]
     test, reason, used = choose_test(case.symptom, case.hyps, lines, ranked)
@@ -118,7 +139,7 @@ def node_update(state: State) -> dict:
         "step": step, "test": ev.test_id, "reason": case.pending_reason, "llm_choice": case.pending_llm,
         "evidence_id": ev.id, "confidences": {h.id: round(h.confidence, 4) for h in case.hyps},
     })
-    who = "LLM" if case.pending_llm else "fallback"
+    who = "confirm" if case.pending_reason.startswith("confirm") else ("LLM" if case.pending_llm else "fallback")
     _say(case, f"\n[{step}] plan ({who}): {ev.test_id}" + (f"  - {case.pending_reason}" if case.pending_reason else ""))
     _say(case, f"    {ev.id} {ev.summary}")
     _say(case, f"    top: {_top_line(case)}")

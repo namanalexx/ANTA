@@ -257,6 +257,7 @@ _PROBES = {
     "http": "curl -s -o /dev/null --max-time 3 http://{dst}/",
     "dns": "dig +time=1 +tries=1 @{dst} web.anta.local",
 }
+_PROBE_FILTERS = {"ping": "icmp", "http": "tcp port 80 or icmp", "dns": "udp port 53 or icmp"}
 _TS = re.compile(r"^\d{2}:\d{2}:\d{2}\.\d+\s")
 _DIR = re.compile(r"^\S+\s+\S+\s+(In|Out)\s")
 _FLOW = re.compile(r"\bIP6?\s+(\S+)\s+>\s+(\S+?):")
@@ -276,6 +277,8 @@ def capture_packets(node: str, iface: str = "any", duration_s: int = 6, bpf: str
             raise ToolError(f"unknown probe kind (valid: {', '.join(_PROBES)})")
         check_node(probe.get("src", ""))
         check_target(probe.get("dst", ""), "probe destination")
+    if probe and not bpf:
+        bpf = _PROBE_FILTERS[probe["kind"]]  # ignore background noise such as ARP
     cmd = f"timeout {duration_s} tcpdump -l -nn -i {iface} -c 300"
     if bpf:
         cmd += " " + shlex.quote(bpf)
