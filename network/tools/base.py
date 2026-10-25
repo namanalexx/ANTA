@@ -1,15 +1,39 @@
 """Shared plumbing for ANTA tools: docker exec runner, error type, JSON helpers, tool registry."""
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import functools
 import json
+import os
 import re
 import subprocess
 from typing import Any
 
 NODES = ["client", "router", "firewall", "dns-server", "web-server"]
 _TARGET_RE = re.compile(r"[A-Za-z0-9._-]+")
+_STATE = {"prefix": os.environ.get("ANTA_PREFIX", ""), "ip_map": None}
+
+
+def cname(node: str) -> str:
+    """Docker container name for a logical node name (the shadow stack prefixes its names)."""
+    return _STATE["prefix"] + node
+
+
+def current_ip_map():
+    return _STATE["ip_map"]
+
+
+@contextlib.contextmanager
+def namespace(prefix: str, ip_map=None):
+    """Run tools against another lab stack, e.g. namespace("shadow-", ("10.10.", "10.20."))."""
+    old = dict(_STATE)
+    _STATE["prefix"], _STATE["ip_map"] = prefix, ip_map
+    try:
+        yield
+    finally:
+        _STATE.update(old)
+
 
 
 class ToolError(Exception):
@@ -33,7 +57,7 @@ def run(node: str, cmd: str, timeout: int = 20) -> tuple[int, str, str]:
     check_node(node)
     try:
         res = subprocess.run(
-            ["docker", "exec", node, "sh", "-c", cmd],
+            ["docker", "exec", cname(node), "sh", "-c", cmd],
             capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:

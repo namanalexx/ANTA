@@ -1,7 +1,14 @@
 """Parameterized fault injection + idempotent network reset for benchmark scenarios."""
 from __future__ import annotations
 
-from common import sh
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+from common import cname, sh
+
+GOLDEN_DIR = Path(__file__).resolve().parents[1] / "devices"
 
 BASELINE_ROUTES = {
     "client": ["default via 10.10.1.2"],
@@ -19,21 +26,32 @@ def _stop(device: str, proc: str) -> None:
     sh(device, f"pkill -x {proc}; {_WAIT_GONE.format(p=proc)}; ! pgrep -x {proc} >/dev/null")
 
 
+def _push_config(node: str, rel: str, container_path: str, ip_prefix: str) -> None:
+    """Copy the repo's known-good config into a container, rendered for that stack's IP plan."""
+    text = (GOLDEN_DIR / rel).read_text().replace("10.10.", ip_prefix)
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".conf") as f:
+        f.write(text)
+    os.chmod(f.name, 0o644)
+    subprocess.run(["docker", "cp", f.name, f"{cname(node)}:{container_path}"], check=True, capture_output=True)
+    os.unlink(f.name)
+
+
 def _start_dns() -> None:
     sh("dns-server", f"pkill -x dnsmasq; {_WAIT_GONE.format(p='dnsmasq')}; dnsmasq -C {DNS_CONF}")
 
 
-def reset_network() -> None:
+def reset_network(ip_prefix: str = "10.10.") -> None:
     """Return every device to its baseline state (safe to call any number of times)."""
     for node, routes in BASELINE_ROUTES.items():
+        routes = [r.replace("10.10.", ip_prefix) for r in routes]
         for r in routes:
             sh(node, f"ip route replace {r}")
     for node in ("router", "firewall"):
         sh(node, "iptables -F; iptables -X; iptables -P INPUT ACCEPT; "
                  "iptables -P FORWARD ACCEPT; iptables -P OUTPUT ACCEPT")
-    sh("web-server", f"sed -i 's/return 503/return 200/' {NGINX_CONF}; "
-                     f"if pgrep -x nginx >/dev/null; then nginx -s reload; else nginx -c {NGINX_CONF}; fi")
-    sh("dns-server", f"sed -i 's#^address=/web.anta.local/.*#address=/web.anta.local/10.10.3.20#' {DNS_CONF}")
+    _push_config("web-server", "web/nginx.conf", NGINX_CONF, ip_prefix)
+    sh("web-server", f"if pgrep -x nginx >/dev/null; then nginx -s reload; else nginx -c {NGINX_CONF}; fi")
+    _push_config("dns-server", "dns/dnsmasq.conf", DNS_CONF, ip_prefix)
     _start_dns()
 
 

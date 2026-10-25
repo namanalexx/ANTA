@@ -2,11 +2,17 @@
 import json
 import subprocess
 
+try:  # inside the ANTA packages: honour the active lab namespace (live vs shadow)
+    from tools.base import cname
+except ImportError:  # standalone use of the inject_*.py / restore_*.py scripts
+    def cname(node):
+        return node
+
 
 def sh(container: str, cmd: str, check: bool = True) -> subprocess.CompletedProcess:
     """Run a shell command inside a container via docker exec."""
     res = subprocess.run(
-        ["docker", "exec", container, "sh", "-c", cmd],
+        ["docker", "exec", cname(container), "sh", "-c", cmd],
         capture_output=True, text=True,
     )
     if check and res.returncode != 0:

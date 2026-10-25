@@ -11,6 +11,11 @@ if [ -n "${ROUTES:-}" ]; then
   done
 fi
 
+# Optional: render the lab IP plan (the shadow stack sets IP_PREFIX=10.20)
+if [ -n "${IP_PREFIX:-}" ]; then
+  sed -i "s/10\.10\./${IP_PREFIX}./g" /etc/dnsmasq.conf
+fi
+
 # Start the role's service (they daemonize), then keep the container alive
 case "${ROLE:-}" in
   dns) dnsmasq -C /etc/dnsmasq.conf ;;

@@ -8,7 +8,7 @@ import subprocess
 import time
 from typing import Optional
 
-from .base import NODES, ToolError, check_node, check_target, docker, run, tool
+from .base import NODES, ToolError, check_node, check_target, cname, docker, run, tool
 from .models import (
     ArpEntry, ArpTable, CaptureResult, DnsResult, FirewallChain, FirewallRule, FirewallState,
     Hop, Interface, InterfaceStatus, Link, LogEntry, LogResult, PingResult, Route, RouteTable,
@@ -42,10 +42,10 @@ def _own_ipv4(node: str) -> Optional[str]:
 @tool(Topology, "Discover nodes, L2 segments (links) and IP assignments of the lab network.")
 def get_topology() -> Topology:
     try:
-        containers = json.loads(docker("inspect", *NODES))
+        containers = json.loads(docker("inspect", *[cname(n) for n in NODES]))
     except ValueError:
         raise ToolError("could not parse docker inspect output")
-    by_name = {c["Name"].lstrip("/"): c for c in containers}
+    by_name = {c["Name"].lstrip("/")[len(cname("")):]: c for c in containers}
     ip_assignments: dict[str, dict[str, str]] = {}
     members: dict[str, list[str]] = {}
     for n in NODES:
@@ -282,7 +282,7 @@ def capture_packets(node: str, iface: str = "any", duration_s: int = 6, bpf: str
     cmd = f"timeout {duration_s} tcpdump -l -nn -i {iface} -c 300"
     if bpf:
         cmd += " " + shlex.quote(bpf)
-    proc = subprocess.Popen(["docker", "exec", node, "sh", "-c", cmd],
+    proc = subprocess.Popen(["docker", "exec", cname(node), "sh", "-c", cmd],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         time.sleep(1.0)  # let tcpdump start listening
@@ -427,7 +427,7 @@ def get_logs(node: str, limit: int = 40) -> LogResult:
     check_node(node)
     limit = max(1, min(int(limit), 200))
     entries: list[LogEntry] = []
-    for line in docker("logs", "--tail", str(limit), "-t", node, merge_stderr=True).splitlines():
+    for line in docker("logs", "--tail", str(limit), "-t", cname(node), merge_stderr=True).splitlines():
         if line.strip():
             entries.append(_parse_log_line("container", line))
     for path, kind in _LOG_FILES.get(node, []):

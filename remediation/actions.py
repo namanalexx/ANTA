@@ -2,14 +2,18 @@
 The LLM never writes commands. Facts come from the Phase 2 tools; fixes come from this playbook."""
 from __future__ import annotations
 
+import os
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from agent import ROOT
 from agent.planner import _blocks_relevant_flow, build_context
 from common import sh
 from tools import TOOLS, get_route_table, inspect_firewall, to_dict
+from tools.base import cname, current_ip_map
 
 GOLDEN = {  # known-good configs live in the repo and are the source of truth
     "dns-server": (ROOT / "network" / "devices" / "dns" / "dnsmasq.conf", "/etc/dnsmasq.conf"),
@@ -154,8 +158,16 @@ def _run_steps(steps: list) -> dict:
     log, ok = [], True
     for st in steps:
         if st.host_path:
-            rc = subprocess.run(["docker", "cp", st.host_path, f"{st.container}:{st.container_path}"],
+            src, tmp = st.host_path, None
+            ip_map = current_ip_map()
+            if ip_map:  # shadow stack: render the golden config with the shadow IP plan
+                with tempfile.NamedTemporaryFile("w", delete=False, suffix=".conf") as f:
+                    f.write(Path(st.host_path).read_text().replace(ip_map[0], ip_map[1]))
+                src = tmp = f.name
+            rc = subprocess.run(["docker", "cp", src, f"{cname(st.container)}:{st.container_path}"],
                                 capture_output=True, text=True).returncode
+            if tmp:
+                os.unlink(tmp)
         else:
             rc = sh(st.container, st.command, check=False).returncode
         log.append({"step": st.description, "rc": rc})
