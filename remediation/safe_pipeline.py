@@ -29,9 +29,12 @@ def _apply_and_assess(action, before_fp: dict, before_state: dict) -> dict:
     return {"applied": applied, "verification": verification, **report}
 
 
-def remediate_gated(diagnosis: dict, action_factory=None, apply_live: bool = True, verbose: bool = True) -> dict:
+def remediate_gated(diagnosis: dict, action_factory=None, apply_live: bool = True, verbose: bool = True,
+                    on_event=None) -> dict:
     """action_factory: zero-arg callable returning the Action; it is called once per stack so that the plan is
-    built from that stack's own facts. Default: the playbook entry for the diagnosis."""
+    built from that stack's own facts. Default: the playbook entry for the diagnosis.
+    on_event(type, **data): optional progress hook (used by the dashboard)."""
+    emit = on_event or (lambda *a, **k: None)
     t0 = time.time()
     factory = action_factory or (lambda: plan_action(diagnosis))
     live_fp, live_state = health_fingerprint(), state_snapshot()
@@ -41,16 +44,25 @@ def remediate_gated(diagnosis: dict, action_factory=None, apply_live: bool = Tru
 
     if live_action is None:
         out.update(decision="no_action", reason="nothing to fix (no fault diagnosed or no playbook entry)")
+        emit("decision", decision=out["decision"], reason=out["reason"])
     else:
+        emit("fix_proposed", action=out["action"])
         shadow.up()
+        emit("shadow", phase="cloning")
         clone = shadow.clone_live_to_shadow()
+        emit("shadow", phase="cloned", summary=clone)
         with shadow.shadow_namespace():
             sh_fp, sh_state = health_fingerprint(), state_snapshot()
             fidelity = _comparable(sh_fp["anomalies"]) == _comparable(live_fp["anomalies"])
             out["shadow"] = {"clone": clone, "fidelity": fidelity, "live_anomalies": live_fp["anomalies"],
                              "shadow_anomalies": sh_fp["anomalies"]}
+            emit("shadow", phase="fidelity", ok=fidelity, live_anomalies=live_fp["anomalies"],
+                 shadow_anomalies=sh_fp["anomalies"])
             if fidelity:
-                out["shadow"].update(_apply_and_assess(factory(), sh_fp, sh_state))
+                res = _apply_and_assess(factory(), sh_fp, sh_state)
+                out["shadow"].update(res)
+                emit("shadow", phase="tested", fixed=res["fixed"], regression=res["regression"],
+                     unintended=res["unintended_changes"] + res["newly_broken"], verification=res["verification"])
         sd = out["shadow"]
         if not fidelity:
             out.update(decision="blocked_inconclusive", reason="shadow did not reproduce the live symptoms")
@@ -62,10 +74,16 @@ def remediate_gated(diagnosis: dict, action_factory=None, apply_live: bool = Tru
         elif not apply_live:
             out.update(decision="approved_not_applied", reason="shadow validation passed (--no-apply)")
         else:
-            out["live"] = _apply_and_assess(live_action, live_fp, live_state)
             out.update(decision="applied", reason="shadow validation passed")
-        if out["decision"] != "applied":
+        emit("decision", decision=out["decision"], reason=out["reason"])
+        if out["decision"] == "applied":
+            emit("live", phase="applying")
+            out["live"] = _apply_and_assess(live_action, live_fp, live_state)
+            emit("live", phase="result", fixed=out["live"]["fixed"], regression=out["live"]["regression"],
+                 verification=out["live"]["verification"])
+        else:
             out["live_untouched"] = state_snapshot() == live_state
+            emit("live", phase="untouched", untouched=out["live_untouched"])
     out["seconds"] = round(time.time() - t0, 1)
     if verbose:
         _print(out)
