@@ -1,0 +1,32 @@
+{
+  "id": "s45",
+  "description": "Firewall drops 60% of packets on its server side",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Users report intermittent failures loading web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "firewall",
+    "mechanism": "netem",
+    "subnet": "10.10.3.",
+    "loss_pct": 60
+  },
+  "ground_truth": {
+    "device": "firewall",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:firewall"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "firewall"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

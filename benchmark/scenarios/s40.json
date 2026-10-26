@@ -1,0 +1,31 @@
+{
+  "id": "s40",
+  "description": "DNS server's network interface is down",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Name lookups for web.anta.local fail.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "interface_down",
+    "device": "dns-server",
+    "mechanism": "iface_down",
+    "subnet": "10.10.3."
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "L2",
+    "cause": "interface_down",
+    "evidence_required": [
+      "iface_up:dns-server"
+    ]
+  },
+  "remediation": {
+    "action": "bring_interface_up",
+    "device": "dns-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

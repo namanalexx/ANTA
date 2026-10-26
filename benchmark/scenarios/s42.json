@@ -1,0 +1,32 @@
+{
+  "id": "s42",
+  "description": "Firewall adds 500 ms delay on its core side",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Users report the web page loads very slowly.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "firewall",
+    "mechanism": "netem",
+    "subnet": "10.10.2.",
+    "delay_ms": 500
+  },
+  "ground_truth": {
+    "device": "firewall",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:firewall"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "firewall"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

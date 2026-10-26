@@ -169,6 +169,8 @@ def main(argv: list) -> int:
     scenarios = [json.loads(p.read_text()) for p in sorted(SCEN_DIR.glob("s*.json"))]
     if split != "all":
         scenarios = [s for s in scenarios if s["split"] == split]
+    else:  # the out-of-library stress scenarios are only run when asked for explicitly
+        scenarios = [s for s in scenarios if s["split"] != "stress"]
     if only:
         scenarios = [s for s in scenarios if s["id"] in only]
     con = connect()

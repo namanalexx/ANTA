@@ -1,0 +1,32 @@
+{
+  "id": "s44",
+  "description": "DNS server adds 1500 ms delay",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Name lookups for web.anta.local take very long.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "dns-server",
+    "mechanism": "netem",
+    "subnet": "10.10.3.",
+    "delay_ms": 1500
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:dns-server"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "dns-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "s36",
+  "description": "Router's client-side interface is down",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "interface_down",
+    "device": "router",
+    "mechanism": "iface_down",
+    "subnet": "10.10.1."
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L2",
+    "cause": "interface_down",
+    "evidence_required": [
+      "iface_up:router"
+    ]
+  },
+  "remediation": {
+    "action": "bring_interface_up",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

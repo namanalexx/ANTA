@@ -61,6 +61,8 @@ def main(argv: list) -> int:
         return 1
     if o["split"] != "all":
         scenarios = [s for s in scenarios if s["split"] == o["split"]]
+    else:  # the out-of-library stress scenarios are only run when asked for explicitly
+        scenarios = [s for s in scenarios if s["split"] != "stress"]
     if o["scenarios"]:
         scenarios = [s for s in scenarios if s["id"] in o["scenarios"]]
 

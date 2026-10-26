@@ -1,0 +1,32 @@
+{
+  "id": "s41",
+  "description": "Router drops 40% of packets on its client side",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Users report intermittent failures loading web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "router",
+    "mechanism": "netem",
+    "subnet": "10.10.1.",
+    "loss_pct": 40
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:router"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

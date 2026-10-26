@@ -1,6 +1,7 @@
 """Parameterized fault injection + idempotent network reset for benchmark scenarios."""
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -9,6 +10,17 @@ from pathlib import Path
 from common import cname, sh
 
 GOLDEN_DIR = Path(__file__).resolve().parents[1] / "devices"
+_IFACES_UP = ('for i in $(ls /sys/class/net); do [ "$i" = lo ] || '
+              '{ ip link set "$i" up; tc qdisc del dev "$i" root 2>/dev/null; }; done; true')
+
+
+def _iface_for(device: str, prefix: str) -> str:
+    """Name of the interface carrying an address that starts with prefix (names are not stable across restarts)."""
+    for e in json.loads(sh(device, "ip -j -4 addr show").stdout or "[]"):
+        for a in e.get("addr_info", []):
+            if a.get("local", "").startswith(prefix):
+                return e["ifname"]
+    raise RuntimeError(f"no interface on {device} with an address starting {prefix}")
 
 BASELINE_ROUTES = {
     "client": ["default via 10.10.1.2"],
@@ -42,6 +54,8 @@ def _start_dns() -> None:
 
 def reset_network(ip_prefix: str = "10.10.") -> None:
     """Return every device to its baseline state (safe to call any number of times)."""
+    for node in BASELINE_ROUTES:  # interfaces up and netem cleared before routes are restored
+        sh(node, _IFACES_UP, check=False)
     for node, routes in BASELINE_ROUTES.items():
         routes = [r.replace("10.10.", ip_prefix) for r in routes]
         for r in routes:
@@ -71,6 +85,15 @@ def inject(fault: dict) -> None:
         if action == "REJECT" and fault["protocol"] == "tcp":
             spec += " --reject-with tcp-reset"
         sh(dev, f"iptables -I FORWARD {spec}")
+    elif mech == "iface_down":
+        sh(dev, f"ip link set {_iface_for(dev, fault['subnet'])} down")
+    elif mech == "netem":
+        spec = ""
+        if fault.get("delay_ms"):
+            spec += f" delay {fault['delay_ms']}ms"
+        if fault.get("loss_pct"):
+            spec += f" loss {fault['loss_pct']}%"
+        sh(dev, f"tc qdisc replace dev {_iface_for(dev, fault['subnet'])} root netem{spec}")
     elif mech == "iptables_policy":
         sh(dev, f"iptables -P {fault.get('chain', 'FORWARD')} DROP")
     elif mech == "service_stop":

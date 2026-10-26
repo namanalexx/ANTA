@@ -24,7 +24,9 @@ def stop(dev, proc, typ):
 
 
 NONE = {"type": "no_fault", "device": None, "mechanism": "none"}
-LAYER = {"broken_route": "L3", "firewall_block": "L4", "dns_failure": "APP", "service_failure": "L7", "no_fault": "-"}
+LAYER = {"broken_route": "L3", "firewall_block": "L4", "dns_failure": "APP", "service_failure": "L7",
+         "interface_down": "L2", "link_degradation": "L3", "no_fault": "-"}
+STRESS = {f"s{n}" for n in range(36, 46)}  # out-of-library scenarios, kept out of the headline numbers
 
 
 def remediation(f):
@@ -38,6 +40,8 @@ def remediation(f):
         "nginx_503": {"action": "restore_service_config", "device": d},
         "dns_wrong_ip": {"action": "restore_dns_record", "device": d},
         "iptables_policy": {"action": "restore_policy", "device": d},
+        "iface_down": {"action": "bring_interface_up", "device": d},
+        "netem": {"action": "remove_netem", "device": d},
     }[m]
 
 
@@ -86,6 +90,26 @@ SPECS = [
     ("s34", "B_variant", "The client lost access to everything beyond its own subnet.", "Client lost its default route (fresh wording)", route("client", "default"), ["route_complete:client"]),
     ("s35", "B_variant", "All traffic through the firewall is being silently discarded.", "Firewall FORWARD policy set to DROP",
      {"type": "firewall_block", "device": "firewall", "mechanism": "iptables_policy", "chain": "FORWARD"}, ["fw_has_drop:firewall"]),
+    ("s36", "D_unknown", WEB, "Router's client-side interface is down",
+     {"type": "interface_down", "device": "router", "mechanism": "iface_down", "subnet": "10.10.1."}, ["iface_up:router"]),
+    ("s37", "D_unknown", WEB, "Router's core-side interface is down",
+     {"type": "interface_down", "device": "router", "mechanism": "iface_down", "subnet": "10.10.2."}, ["iface_up:router"]),
+    ("s38", "D_unknown", WEB, "Firewall's server-side interface is down",
+     {"type": "interface_down", "device": "firewall", "mechanism": "iface_down", "subnet": "10.10.3."}, ["iface_up:firewall"]),
+    ("s39", "D_unknown", WEB, "Web server's network interface is down",
+     {"type": "interface_down", "device": "web-server", "mechanism": "iface_down", "subnet": "10.10.3."}, ["iface_up:web-server"]),
+    ("s40", "D_unknown", "Name lookups for web.anta.local fail.", "DNS server's network interface is down",
+     {"type": "interface_down", "device": "dns-server", "mechanism": "iface_down", "subnet": "10.10.3."}, ["iface_up:dns-server"]),
+    ("s41", "D_unknown", "Users report intermittent failures loading web.anta.local.", "Router drops 40% of packets on its client side",
+     {"type": "link_degradation", "device": "router", "mechanism": "netem", "subnet": "10.10.1.", "loss_pct": 40}, ["link_degraded:router"]),
+    ("s42", "D_unknown", "Users report the web page loads very slowly.", "Firewall adds 500 ms delay on its core side",
+     {"type": "link_degradation", "device": "firewall", "mechanism": "netem", "subnet": "10.10.2.", "delay_ms": 500}, ["link_degraded:firewall"]),
+    ("s43", "D_unknown", WEB, "Web server loses 100% of its outgoing packets",
+     {"type": "link_degradation", "device": "web-server", "mechanism": "netem", "subnet": "10.10.3.", "loss_pct": 100}, ["link_degraded:web-server"]),
+    ("s44", "D_unknown", "Name lookups for web.anta.local take very long.", "DNS server adds 1500 ms delay",
+     {"type": "link_degradation", "device": "dns-server", "mechanism": "netem", "subnet": "10.10.3.", "delay_ms": 1500}, ["link_degraded:dns-server"]),
+    ("s45", "D_unknown", "Users report intermittent failures loading web.anta.local.", "Firewall drops 60% of packets on its server side",
+     {"type": "link_degradation", "device": "firewall", "mechanism": "netem", "subnet": "10.10.3.", "loss_pct": 60}, ["link_degraded:firewall"]),
 ]
 
 
@@ -97,16 +121,16 @@ def main() -> None:
         if typ != "no_fault":
             types.add(typ)
         sc = {
-            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else "test",
+            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else ("stress" if sid in STRESS else "test"),
             "symptom": symptom, "topology": "standard_5node", "injected_fault": fault,
             "ground_truth": {"device": "none" if typ == "no_fault" else fault.get("device"), "layer": LAYER[typ], "cause": typ,
                              "evidence_required": req},
             "remediation": remediation(fault), "verification_tests": VERIFY,
         }
         (OUT / f"{sid}.json").write_text(json.dumps(sc, indent=2))
-    assert len(SPECS) == 35 and len(types) <= 6, "scope cap violated"
+    assert len(SPECS) == 45 and len(types) <= 6, "scope cap violated"
     print(f"wrote {len(SPECS)} scenarios to {OUT}")
-    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV)}")
+    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV) - len(STRESS)} stress={len(STRESS)}")
 
 
 if __name__ == "__main__":

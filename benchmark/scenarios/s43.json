@@ -1,0 +1,32 @@
+{
+  "id": "s43",
+  "description": "Web server loses 100% of its outgoing packets",
+  "tier": "D_unknown",
+  "split": "stress",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "web-server",
+    "mechanism": "netem",
+    "subnet": "10.10.3.",
+    "loss_pct": 100
+  },
+  "ground_truth": {
+    "device": "web-server",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:web-server"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "web-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}
