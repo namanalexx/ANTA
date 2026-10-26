@@ -19,7 +19,7 @@ def main(argv: list) -> int:
     system = argv[argv.index("--system") + 1] if "--system" in argv else "anta"
     con = connect()
     rows = [dict(r) for r in con.execute(
-        "SELECT * FROM runs WHERE system = ? AND split = 'stress' ORDER BY scenario_id", (system,))]
+        "SELECT * FROM runs WHERE system = ? AND split IN ('stress', 'stress_test') ORDER BY scenario_id", (system,))]
     if not rows:
         print(f"no stress runs recorded for '{system}'")
         return 1

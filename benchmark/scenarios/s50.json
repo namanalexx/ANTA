@@ -1,0 +1,32 @@
+{
+  "id": "s50",
+  "description": "Client loses 50% of its outgoing packets",
+  "tier": "D_unknown",
+  "split": "stress_test",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "client",
+    "mechanism": "netem",
+    "subnet": "10.10.1.",
+    "loss_pct": 50
+  },
+  "ground_truth": {
+    "device": "client",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:client"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "client"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "s46",
+  "description": "Firewall's core-side interface is down",
+  "tier": "D_unknown",
+  "split": "stress_test",
+  "symptom": "Users on the client cannot load the web server at web.anta.local.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "interface_down",
+    "device": "firewall",
+    "mechanism": "iface_down",
+    "subnet": "10.10.2."
+  },
+  "ground_truth": {
+    "device": "firewall",
+    "layer": "L2",
+    "cause": "interface_down",
+    "evidence_required": [
+      "iface_up:firewall"
+    ]
+  },
+  "remediation": {
+    "action": "bring_interface_up",
+    "device": "firewall"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

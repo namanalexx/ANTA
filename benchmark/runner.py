@@ -21,6 +21,7 @@ from experiments.baseline_llm_only import run_llm_only  # noqa: E402
 from experiments.baseline_react import run_react  # noqa: E402
 
 SYSTEMS = {"anta": lambda symptom: run_agent(symptom, verbose=False),
+           "anta_v1": lambda symptom: run_agent(symptom, verbose=False),  # label for the pre-extension agent
            "llm_only": run_llm_only,
            "react": run_react}
 
@@ -62,7 +63,7 @@ def main(argv: list) -> int:
     if o["split"] != "all":
         scenarios = [s for s in scenarios if s["split"] == o["split"]]
     else:  # the out-of-library stress scenarios are only run when asked for explicitly
-        scenarios = [s for s in scenarios if s["split"] != "stress"]
+        scenarios = [s for s in scenarios if s["split"] not in ("stress", "stress_test")]
     if o["scenarios"]:
         scenarios = [s for s in scenarios if s["id"] in o["scenarios"]]
 

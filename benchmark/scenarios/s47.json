@@ -1,0 +1,31 @@
+{
+  "id": "s47",
+  "description": "Client's network interface is down",
+  "tier": "D_unknown",
+  "split": "stress_test",
+  "symptom": "The client cannot reach anything on the network.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "interface_down",
+    "device": "client",
+    "mechanism": "iface_down",
+    "subnet": "10.10.1."
+  },
+  "ground_truth": {
+    "device": "client",
+    "layer": "L2",
+    "cause": "interface_down",
+    "evidence_required": [
+      "iface_up:client"
+    ]
+  },
+  "remediation": {
+    "action": "bring_interface_up",
+    "device": "client"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

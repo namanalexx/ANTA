@@ -6,7 +6,7 @@ import csv
 from benchmark import ROOT
 from benchmark.evaluator import _agg, connect
 
-ORDER = ["llm_only", "react", "anta"]
+ORDER = ["llm_only", "react", "anta_v1", "anta"]
 
 
 def wilson(k: int, n: int, z: float = 1.96):
@@ -26,7 +26,7 @@ def main() -> None:
     csv_rows = []
     for label, pick in (("TEST (headline)", lambda r: r["split"] == "test"),
                         ("DEV (tuned on)", lambda r: r["split"] == "dev"),
-                        ("ALL 35", lambda r: r["split"] != "stress")):
+                        ("ALL 35", lambda r: r["split"] not in ("stress", "stress_test"))):
         print(f"\n=== {label} ===")
         print(f"  {'system':10s} {'n':>3s} {'detect':>7s} {'RCA':>5s} {'95% CI':>13s} {'device':>7s} {'layer':>6s} "
               f"{'evid':>5s} {'calls':>6s} {'sec':>6s}")

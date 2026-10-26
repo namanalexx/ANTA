@@ -27,6 +27,7 @@ NONE = {"type": "no_fault", "device": None, "mechanism": "none"}
 LAYER = {"broken_route": "L3", "firewall_block": "L4", "dns_failure": "APP", "service_failure": "L7",
          "interface_down": "L2", "link_degradation": "L3", "no_fault": "-"}
 STRESS = {f"s{n}" for n in range(36, 46)}  # out-of-library scenarios, kept out of the headline numbers
+STRESS_TEST = {f"s{n}" for n in range(46, 52)}  # fresh held-out scenarios for the extended agent
 
 
 def remediation(f):
@@ -110,6 +111,18 @@ SPECS = [
      {"type": "link_degradation", "device": "dns-server", "mechanism": "netem", "subnet": "10.10.3.", "delay_ms": 1500}, ["link_degraded:dns-server"]),
     ("s45", "D_unknown", "Users report intermittent failures loading web.anta.local.", "Firewall drops 60% of packets on its server side",
      {"type": "link_degradation", "device": "firewall", "mechanism": "netem", "subnet": "10.10.3.", "loss_pct": 60}, ["link_degraded:firewall"]),
+    ("s46", "D_unknown", WEB, "Firewall's core-side interface is down",
+     {"type": "interface_down", "device": "firewall", "mechanism": "iface_down", "subnet": "10.10.2."}, ["iface_up:firewall"]),
+    ("s47", "D_unknown", "The client cannot reach anything on the network.", "Client's network interface is down",
+     {"type": "interface_down", "device": "client", "mechanism": "iface_down", "subnet": "10.10.1."}, ["iface_up:client"]),
+    ("s48", "D_unknown", "Pages sometimes fail to load for users.", "Router drops 30% of packets on its core side",
+     {"type": "link_degradation", "device": "router", "mechanism": "netem", "subnet": "10.10.2.", "loss_pct": 30}, ["link_degraded:router"]),
+    ("s49", "D_unknown", "The web page loads very slowly.", "Web server adds 800 ms delay",
+     {"type": "link_degradation", "device": "web-server", "mechanism": "netem", "subnet": "10.10.3.", "delay_ms": 800}, ["link_degraded:web-server"]),
+    ("s50", "D_unknown", WEB, "Client loses 50% of its outgoing packets",
+     {"type": "link_degradation", "device": "client", "mechanism": "netem", "subnet": "10.10.1.", "loss_pct": 50}, ["link_degraded:client"]),
+    ("s51", "D_unknown", "web.anta.local cannot be resolved from the client.", "DNS server's network interface is down (fresh wording)",
+     {"type": "interface_down", "device": "dns-server", "mechanism": "iface_down", "subnet": "10.10.3."}, ["iface_up:dns-server"]),
 ]
 
 
@@ -121,16 +134,16 @@ def main() -> None:
         if typ != "no_fault":
             types.add(typ)
         sc = {
-            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else ("stress" if sid in STRESS else "test"),
+            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else ("stress" if sid in STRESS else ("stress_test" if sid in STRESS_TEST else "test")),
             "symptom": symptom, "topology": "standard_5node", "injected_fault": fault,
             "ground_truth": {"device": "none" if typ == "no_fault" else fault.get("device"), "layer": LAYER[typ], "cause": typ,
                              "evidence_required": req},
             "remediation": remediation(fault), "verification_tests": VERIFY,
         }
         (OUT / f"{sid}.json").write_text(json.dumps(sc, indent=2))
-    assert len(SPECS) == 45 and len(types) <= 6, "scope cap violated"
+    assert len(SPECS) == 51 and len(types) <= 6, "scope cap violated"
     print(f"wrote {len(SPECS)} scenarios to {OUT}")
-    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV) - len(STRESS)} stress={len(STRESS)}")
+    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV) - len(STRESS) - len(STRESS_TEST)} stress={len(STRESS)} stress_test={len(STRESS_TEST)}")
 
 
 if __name__ == "__main__":

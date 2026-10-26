@@ -1,0 +1,32 @@
+{
+  "id": "s48",
+  "description": "Router drops 30% of packets on its core side",
+  "tier": "D_unknown",
+  "split": "stress_test",
+  "symptom": "Pages sometimes fail to load for users.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "router",
+    "mechanism": "netem",
+    "subnet": "10.10.2.",
+    "loss_pct": 30
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:router"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}
