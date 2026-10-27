@@ -88,11 +88,21 @@ def build_catalog(ctx: Ctx) -> dict:
         tests.append(Test(f"cap_{node}_http", f"Capture packets on {node} while the client makes an HTTP request",
                           "capture_packets", {"node": node, "iface": "any", "duration_s": 6, "probe": probe},
                           [f"cap:{node}:{p}" for p in CAP_PATTERNS], {"node": node}))
+    for node in ("client", "router", "firewall", "dns-server", "web-server"):
+        tests.append(Test(f"ifaces_{node}", f"Check the network interfaces of {node} (link state, packet-loss/delay settings)",
+                          "get_interface_status", {"node": node},
+                          [f"iface_up:{node}", f"link_degraded:{node}"], {"node": node}))
+    for label, ip in targets.items():
+        tests.append(Test(f"quality_client_{label}", f"Measure packet loss and latency from client to {label} (10 probes)",
+                          "ping", {"src": "client", "dst": ip, "count": 10, "interval": 0.2},
+                          [f"path_ok:client->{label}"], {"label": label, "quality": True}))
     return {t.id: t for t in tests}
 
 
 # ------------------------------------------------------------------ finding extractors
 def _x_ping(t, r, ctx):
+    if t.meta.get("quality"):
+        return _x_quality(t, r, ctx)
     k = f"{t.args['src']}->{t.meta['label']}"
     f = {f"reach:{k}": r["reachable"]}
     if r["reachable"]:
@@ -192,9 +202,27 @@ def _x_cap(t, r, ctx):
             f"patterns: {', '.join(r['patterns']) or 'none'}"), f
 
 
+def _x_quality(t, r, ctx):
+    k = f"{t.args['src']}->{t.meta['label']}"
+    loss, rtt = r["packet_loss_pct"], r["avg_rtt_ms"]
+    ok = bool(r["reachable"]) and loss < 5 and rtt is not None and rtt < 20
+    detail = f"{loss:.0f}% loss" + (f", avg {rtt} ms" if rtt is not None else ", no replies")
+    return f"path quality {k}: {'OK' if ok else 'DEGRADED'} ({detail})", {f"path_ok:{k}": ok}
+
+
+def _x_iface(t, r, ctx):
+    node = t.meta["node"]
+    down = [i["name"] for i in r["interfaces"] if i["status"] != "up"]
+    shaped = [f"{i['name']}: {i['netem']}" for i in r["interfaces"] if i.get("netem")]
+    f = {f"iface_up:{node}": not down, f"link_degraded:{node}": bool(shaped)}
+    parts = (["DOWN: " + ", ".join(down)] if down else []) + (["DEGRADED " + "; ".join(shaped)] if shaped else [])
+    return f"interfaces {node}: " + ("; ".join(parts) if parts else "all up, no packet-loss/delay settings"), f
+
+
 _EXTRACTORS = {
     "ping": _x_ping, "traceroute": _x_trace, "inspect_dns": _x_dns, "get_route_table": _x_routes,
     "inspect_firewall": _x_fw, "check_service": _x_svc, "capture_packets": _x_cap,
+    "get_interface_status": _x_iface,
 }
 
 

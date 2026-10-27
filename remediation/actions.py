@@ -12,7 +12,7 @@ from typing import Optional
 from agent import ROOT
 from agent.planner import _blocks_relevant_flow, build_context
 from common import sh
-from tools import TOOLS, get_route_table, inspect_firewall, to_dict
+from tools import TOOLS, get_interface_status, get_route_table, inspect_firewall, to_dict
 from tools.base import cname, current_ip_map
 
 GOLDEN = {  # known-good configs live in the repo and are the source of truth
@@ -28,6 +28,9 @@ PLAYBOOK = {  # hypothesis id -> action
     "H1": "restore_routes", "H2": "restore_routes", "H7": "restore_routes", "H8": "restore_routes",
     "H9": "restore_routes", "H3": "remove_blocking_rules", "H4": "remove_blocking_rules",
     "H5": "start_service", "H6": "start_service", "H10": "restore_config", "H11": "restore_config",
+    "H12": "bring_interface_up", "H13": "bring_interface_up", "H14": "bring_interface_up",
+    "H15": "bring_interface_up", "H16": "bring_interface_up",
+    "H17": "clear_netem", "H18": "clear_netem", "H19": "clear_netem", "H20": "clear_netem", "H21": "clear_netem",
 }
 SERVICE_OF = {"H5": "dnsmasq", "H6": "nginx"}
 
@@ -137,6 +140,34 @@ def _plan_config(hid: str, device: str) -> Action:
                   {key}, {key})
 
 
+def _plan_iface_up(hid: str, device: str) -> Action:
+    st = to_dict(get_interface_status(device))
+    down = [i["name"] for i in st["interfaces"] if i["status"] != "up"]
+    steps = [Step(device, f"ip link set {n} up", f"bring interface {n} up") for n in down]
+    rollback = [Step(device, f"ip link set {n} down", f"take interface {n} down") for n in down]
+    routes = _plan_routes(hid, device)  # static routes are dropped when a link goes down: restore them once it is up
+    steps += routes.steps
+    rollback += routes.rollback
+    ikey, rkey = f"iface:{device}", f"routes:{device}"
+    return Action("bring_interface_up", hid, device,
+                  f"Bring {', '.join(down) or 'no'} interface(s) up on {device} and restore its routes",
+                  steps, rollback, {ikey, rkey}, {rkey},
+                  {ikey: [f"{n}|up|" for n in down], rkey: routes.allowed_added.get(rkey, [])},
+                  {ikey: [f"{n}|down|" for n in down]})
+
+
+def _plan_netem(hid: str, device: str) -> Action:
+    st = to_dict(get_interface_status(device))
+    shaped = [(i["name"], i["netem"]) for i in st["interfaces"] if i.get("netem")]
+    steps = [Step(device, f"tc qdisc del dev {n} root", f"remove packet-loss/delay setting on {n}") for n, _ in shaped]
+    rollback = [Step(device, f"tc qdisc replace dev {n} root netem {args}", f"restore setting on {n}")
+                for n, args in shaped]
+    key = f"iface:{device}"
+    return Action("clear_netem", hid, device, f"Remove {len(shaped)} packet-loss/delay setting(s) on {device}",
+                  steps, rollback, {key}, set(),
+                  {key: [f"{n}|up|" for n, _ in shaped]}, {key: [f"{n}|up|{args}" for n, args in shaped]})
+
+
 def plan_action(diagnosis: dict) -> Optional[Action]:
     """Map a diagnosis to an action. None means 'nothing to fix' (healthy network or no playbook entry)."""
     if diagnosis.get("cause") == "no_fault":
@@ -151,6 +182,10 @@ def plan_action(diagnosis: dict) -> Optional[Action]:
         return _plan_service(hid, device)
     if kind == "restore_config":
         return _plan_config(hid, device)
+    if kind == "bring_interface_up":
+        return _plan_iface_up(hid, device)
+    if kind == "clear_netem":
+        return _plan_netem(hid, device)
     return None
 
 

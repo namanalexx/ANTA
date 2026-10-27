@@ -83,6 +83,14 @@ def get_interface_status(node: str) -> InterfaceStatus:
                    if a.get("family") == "inet"), None)
         interfaces.append(Interface(name=e.get("ifname", ""), status="up" if up else "down",
                                     ip=ip, mac=e.get("address")))
+    _, qout, _ = run(node, "tc qdisc show")
+    netem = {}
+    for line in qout.splitlines():
+        m = re.match(r"qdisc netem \S+ dev (\S+) .*?\blimit \d+\s*(.*)$", line.strip())
+        if m:
+            netem[m.group(1)] = m.group(2).strip() or "netem"
+    for i in interfaces:
+        i.netem = netem.get(i.name)
     return InterfaceStatus(node=node, interfaces=interfaces)
 
 
@@ -112,10 +120,12 @@ def get_arp_table(node: str) -> ArpTable:
 # ----------------------------------------------------------------------------- 5. ping
 @tool(PingResult, "Ping dst from src (3 probes). Reports loss, RTT and the failure mode "
                   "(timeout vs ICMP unreachable, and which device sent it).")
-def ping(src: str, dst: str) -> PingResult:
+def ping(src: str, dst: str, count: int = 3, interval: float = 0.3) -> PingResult:
     check_node(src)
     check_target(dst, "destination")
-    _, out, err = run(src, f"ping -c 3 -W 1 -i 0.3 {dst}")
+    count = max(1, min(int(count), 50))
+    interval = max(0.2, min(float(interval), 1.0))
+    _, out, err = run(src, f"ping -c {count} -W 1 -i {interval} {dst}", timeout=40)
     text = out + "\n" + err
     m = re.search(r"(\d+) packets transmitted, (\d+) (?:packets )?received.*?([\d.]+)% packet loss", text)
     sent, recv, loss = (int(m.group(1)), int(m.group(2)), float(m.group(3))) if m else (0, 0, 100.0)

@@ -14,7 +14,7 @@ from tools import TOOLS, to_dict
 from . import llm
 from .hypotheses import (
     CONFIRM_THRESHOLD, DECISIVE_LR, EvidenceStore, apply_findings, build_hypotheses, leader,
-    ready_to_conclude, refresh_tests_remaining,
+    ready_to_conclude, refresh_tests_remaining, unverified_preconditions,
 )
 from .planner import build_catalog, build_context, choose_test, rank_tests, run_test
 
@@ -24,7 +24,7 @@ DEFAULT_SYMPTOM = "Users on the client cannot load the web server at web.anta.lo
 @dataclass
 class Case:
     symptom: str
-    max_steps: int = 20
+    max_steps: int = 30
     verbose: bool = True
     store: EvidenceStore = field(default_factory=EvidenceStore)
     hyps: list = field(default_factory=list)
@@ -95,7 +95,7 @@ def _confirmation_test(case):
     unrun = [t for t in case.catalog.values() if t.id not in case.executed]
     best = None
     if top.cause == "no_fault":
-        # prove 'healthy' by decisively ruling out every remaining fault hypothesis
+        # prove 'no known fault' by decisively ruling out every remaining fault hypothesis
         open_h = [h for h in case.hyps if h is not top
                   and not any(l.lr >= DECISIVE_LR for l in h.contradicting_evidence)]
         for t in unrun:
@@ -104,6 +104,11 @@ def _confirmation_test(case):
             if n and (best is None or n > best[0]):
                 best = (n, t)
     else:
+        missing = set(unverified_preconditions(top))
+        if missing:  # e.g. a missing route is only the root cause if the interface under it is up
+            for t in unrun:
+                if missing & set(t.keys):
+                    return t
         if any(l.lr >= DECISIVE_LR for l in top.supporting_evidence):
             return None
         for t in unrun:
@@ -257,7 +262,7 @@ def build_graph():
 _APP = None
 
 
-def run_agent(symptom: str = DEFAULT_SYMPTOM, max_steps: int = 20, verbose: bool = True) -> dict:
+def run_agent(symptom: str = DEFAULT_SYMPTOM, max_steps: int = 30, verbose: bool = True) -> dict:
     global _APP
     if _APP is None:
         _APP = build_graph()
@@ -283,7 +288,7 @@ def main(argv: list) -> int:
     args = list(argv)
     verbose = "--quiet" not in args
     as_json = "--json" in args
-    max_steps = 20
+    max_steps = 30
     if "--max-steps" in args:
         i = args.index("--max-steps")
         max_steps = int(args[i + 1])

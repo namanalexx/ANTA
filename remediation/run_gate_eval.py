@@ -28,7 +28,9 @@ SCHEMA = """CREATE TABLE IF NOT EXISTS gate_runs (
 
 # a deliberately wrong diagnosis for each true hypothesis (the resulting fix is ineffective)
 WRONG = {"H1": "H4", "H2": "H4", "H7": "H4", "H8": "H4", "H9": "H4", "H3": "H1", "H4": "H1",
-         "H5": "H6", "H11": "H6", "H6": "H5", "H10": "H5"}
+         "H5": "H6", "H11": "H6", "H6": "H5", "H10": "H5",
+         "H12": "H5", "H13": "H5", "H14": "H5", "H15": "H6", "H16": "H5",
+         "H17": "H6", "H18": "H6", "H19": "H5", "H20": "H6", "H21": "H5"}
 HYP = {"H1": ("broken_route", "router"), "H4": ("firewall_block", "router"),
        "H5": ("dns_failure", "dns-server"), "H6": ("service_failure", "web-server")}
 

@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from common import sh
-from tools import (TOOLS, check_service, get_route_table, inspect_dns, inspect_firewall, ping, to_dict)
+from tools import (TOOLS, check_service, get_interface_status, get_route_table, inspect_dns, inspect_firewall,
+                   ping, to_dict)
 
 from .hypotheses import healthy_value
 from .planner import build_catalog, build_context, run_test
@@ -47,6 +48,9 @@ def state_snapshot() -> dict:
     for n in NODES:
         r = to_dict(get_route_table(n))
         snap[f"routes:{n}"] = sorted(f"{x['dest']}|{x['gateway'] or ''}" for x in r["routes"])
+    for n in NODES:
+        st = to_dict(get_interface_status(n))
+        snap[f"iface:{n}"] = sorted(f"{i['name']}|{i['status']}|{i['netem'] or ''}" for i in st["interfaces"])
     for n in ("router", "firewall"):
         fw = to_dict(inspect_firewall(n))
         items = []

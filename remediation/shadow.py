@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -62,13 +63,31 @@ def reset() -> None:
 def clone_live_to_shadow() -> dict:
     """Replay the live lab's CURRENT state (firewall rules, routes, services, configs) onto a fresh shadow."""
     reset()
-    summary: dict = {"iptables": [], "routes": [], "configs": [], "services": []}
+    summary: dict = {"iptables": [], "routes": [], "configs": [], "services": [], "interfaces": []}
 
     for node in ("router", "firewall"):  # firewall rules and chain policies
         dump = _dx(node, "iptables-save -t filter").stdout
         r = _dx(f"{PREFIX}{node}", "iptables-restore", stdin=_tr(dump))
         summary["iptables"].append(f"{node}:rc={r.returncode}")
 
+    for node in NODES:  # interface state and packet-loss/delay settings (matched by IP, names differ per stack)
+        live_if = json.loads(_dx(node, "ip -j addr show").stdout or "[]")
+        shad_if = json.loads(_dx(f"{PREFIX}{node}", "ip -j addr show").stdout or "[]")
+        by_ip = {a["local"]: e["ifname"] for e in shad_if for a in e.get("addr_info", []) if a.get("family") == "inet"}
+        qdisc = _dx(node, "tc qdisc show").stdout
+        for e in live_if:
+            ip = next((a["local"] for a in e.get("addr_info", []) if a.get("family") == "inet"), None)
+            target = by_ip.get(_tr(ip)) if ip else None
+            if not target or e.get("ifname") == "lo":
+                continue
+            m = re.search(rf"qdisc netem \S+ dev {re.escape(e['ifname'])} .*?\blimit \d+\s*(.*)$", qdisc, re.M)
+            if m:
+                args = m.group(1).strip()
+                _dx(f"{PREFIX}{node}", f"tc qdisc replace dev {target} root netem {args}")
+                summary["interfaces"].append(f"{node}: {target} netem {args}")
+            if "UP" not in e.get("flags", []):
+                _dx(f"{PREFIX}{node}", f"ip link set {target} down")
+                summary["interfaces"].append(f"{node}: {target} down")
     for node in NODES:  # routes: make the shadow's static routes match live
         live = json.loads(_dx(node, "ip -j route").stdout or "[]")
         shad = json.loads(_dx(f"{PREFIX}{node}", "ip -j route").stdout or "[]")

@@ -27,6 +27,7 @@ class Interface:
     status: str = "down"
     ip: Optional[str] = None
     mac: Optional[str] = None
+    netem: Optional[str] = None  # packet-loss / delay emulation configured on the interface
 
 
 @dataclass
