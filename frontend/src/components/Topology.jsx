@@ -15,6 +15,8 @@ export function testNodes(t) {
   if ((m = t.match(/^(?:routes|fw)_(.+)$/))) return [m[1]];
   if (t === "svc_web") return ["web-server"];
   if (t === "svc_dns") return ["dns-server"];
+  if ((m = t.match(/^ifaces_(.+)$/))) return [m[1]];
+  if ((m = t.match(/^quality_client_(.+)$/))) return ["client", m[1]];
   if ((m = t.match(/^cap_(.+)_http$/))) return ["client", m[1]];
   return [];
 }

@@ -13,9 +13,18 @@ from . import shadow
 from .actions import apply_action, plan_action, rollback_action
 
 
-def _comparable(anomalies: list) -> list:
-    """Hit counters are not replayed by the clone, so ignore counter-derived findings when comparing."""
-    return sorted(a for a in anomalies if not a.startswith("fw_drop_hits"))
+# findings that describe configuration state: identical on a faithful clone whatever the traffic does
+STRUCTURAL = ("iface_up", "link_degraded", "route_complete", "fw_has_drop", "svc_up", "svc_local_ok", "dns_ip_correct")
+
+
+def _comparable(anomalies: list, stochastic: bool = False) -> list:
+    """Hit counters are not replayed by the clone, so ignore counter-derived findings when comparing.
+    With packet loss or delay configured, few-probe symptom findings (ping, DNS query, traceroute) are random,
+    so a faithful clone is judged on configuration-level findings only."""
+    keep = [a for a in anomalies if not a.startswith("fw_drop_hits")]
+    if stochastic:
+        keep = [a for a in keep if a.split(":", 1)[0] in STRUCTURAL]
+    return sorted(keep)
 
 
 def _apply_and_assess(action, before_fp: dict, before_state: dict) -> dict:
@@ -53,7 +62,9 @@ def remediate_gated(diagnosis: dict, action_factory=None, apply_live: bool = Tru
         emit("shadow", phase="cloned", summary=clone)
         with shadow.shadow_namespace():
             sh_fp, sh_state = health_fingerprint(), state_snapshot()
-            fidelity = _comparable(sh_fp["anomalies"]) == _comparable(live_fp["anomalies"])
+            stochastic = any(a.startswith("link_degraded:") for a in live_fp["anomalies"])
+            fidelity = (_comparable(sh_fp["anomalies"], stochastic)
+                        == _comparable(live_fp["anomalies"], stochastic))
             out["shadow"] = {"clone": clone, "fidelity": fidelity, "live_anomalies": live_fp["anomalies"],
                              "shadow_anomalies": sh_fp["anomalies"]}
             emit("shadow", phase="fidelity", ok=fidelity, live_anomalies=live_fp["anomalies"],
