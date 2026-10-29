@@ -12,11 +12,17 @@ Scoring rule (healthy readings are NOT evidence for a hypothesis):
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 CONFIRM_THRESHOLD = 0.90
 DECISIVE_LR = 10.0
+
+
+def ablate() -> set:
+    """Ablation switches (comma-separated names in ANTA_ABLATE): no_elimination, no_preconditions."""
+    return set(filter(None, os.environ.get("ANTA_ABLATE", "").split(",")))
 
 
 @dataclass
@@ -345,7 +351,8 @@ def build_hypotheses() -> list:
 def recompute(hyps: list) -> None:
     """Confidence = normalized evidence score over the hypotheses that are still alive. A hypothesis whose own
     decisive prediction (likelihood ratio >= 10) was observed to be false is eliminated, not just down-weighted."""
-    alive = [h for h in hyps if not _decisively_contradicted(h)] or list(hyps)
+    alive = (list(hyps) if "no_elimination" in ablate()
+             else ([h for h in hyps if not _decisively_contradicted(h)] or list(hyps)))
     alive_ids = {id(h) for h in alive}
     m = max(h.log_score for h in alive)
     weights = [math.exp(h.log_score - m) if id(h) in alive_ids else 0.0 for h in hyps]
@@ -395,6 +402,8 @@ def leader(hyps: list) -> Hypothesis:
 def unverified_preconditions(h: Hypothesis) -> list:
     """Strong 'this part stays healthy' claims that were never checked, e.g. a missing route is only the
     root cause if the interface under it is up."""
+    if "no_preconditions" in ablate():
+        return []
     return [p.key for p in h.predictions.values()
             if p.lr >= DECISIVE_LR and healthy_value(p.key) is not None
             and p.expected == healthy_value(p.key) and p.key not in h.observed_keys]

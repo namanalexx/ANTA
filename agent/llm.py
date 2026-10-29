@@ -17,7 +17,7 @@ class LLMError(Exception):
 
 def chat_json(system: str, user: str, max_tokens: int = 300, retries: int = 1) -> dict:
     payload = {
-        "model": MODEL,
+        "model": os.environ.get("ANTA_MODEL", MODEL),
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         "stream": False,
         "format": "json",

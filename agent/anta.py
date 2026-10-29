@@ -3,6 +3,7 @@ Usage (from ~/ANTA, venv active):  python3 -m agent.anta "symptom" [--max-steps 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -195,8 +196,11 @@ def node_conclude(state: State) -> dict:
         top.status = "confirmed"
     allowed = list(dict.fromkeys(l.evidence_id for l in sorted(top.supporting_evidence, key=lambda l: -l.lr)))
     explanation, fix, cited = "", "", []
-    case.llm_calls += 1
+    explain_on = os.environ.get("ANTA_EXPLAIN", "on") != "off"
+    case.llm_calls += 1 if explain_on else 0
     try:
+        if not explain_on:
+            raise llm.LLMError("explanations disabled for this ablation")
         out = llm.chat_json(CONCLUDE_SYSTEM, _conclude_prompt(case, top, allowed))
         explanation = str(out.get("explanation", ""))[:600]
         fix = str(out.get("suggested_fix", ""))[:300]
@@ -233,7 +237,7 @@ def node_conclude(state: State) -> dict:
         "stats": {
             "tool_calls": case.tool_calls, "llm_calls": case.llm_calls, "llm_fallbacks": case.llm_fallbacks,
             "citations_repaired": case.citations_repaired, "steps": len(case.executed),
-            "seconds": round(time.time() - case.started, 1), "model": llm.MODEL,
+            "seconds": round(time.time() - case.started, 1), "model": os.environ.get("ANTA_MODEL", llm.MODEL),
             "concluded_by": "evidence_threshold" if ready else "budget_or_tests_exhausted",
         },
     }

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import math
+import os
+import random
 from dataclasses import dataclass, field
 
 from tools import TOOLS, to_dict
@@ -270,6 +272,12 @@ PLAN_SYSTEM = (
 
 def choose_test(symptom: str, hyps: list, evidence_lines: list, ranked: list, k: int = 6):
     """Returns (test, reason, llm_choice_was_valid)."""
+    mode = os.environ.get("ANTA_PLANNER", "llm")
+    if mode == "ranked":  # ablation: deterministic ranking only, no LLM
+        return ranked[0][1], "ranking only (LLM planner disabled)", False
+    if mode == "random":  # ablation: random order among the remaining tests
+        rng = random.Random(f"{os.environ.get('ANTA_SEED', '0')}|{symptom}|{len(evidence_lines)}")
+        return rng.choice(sorted((t for _, t in ranked), key=lambda t: t.id)), "random order (ablation)", False
     candidates = [t for _, t in ranked[:k]]
     leaders = sorted([h for h in hyps if h.status != "rejected"], key=lambda h: -h.confidence)
     prompt = "\n".join([

@@ -5,6 +5,7 @@ Usage (from ~/ANTA, venv active):
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 
@@ -20,10 +21,33 @@ SCEN_DIR = ROOT / "benchmark" / "scenarios"
 from experiments.baseline_llm_only import run_llm_only  # noqa: E402
 from experiments.baseline_react import run_react  # noqa: E402
 
+def _variant(env: dict):
+    """A runnable ANTA variant: environment switches apply for the duration of one diagnosis."""
+    def run(symptom: str) -> dict:
+        old = {k: os.environ.get(k) for k in env}
+        os.environ.update(env)
+        try:
+            return run_agent(symptom, verbose=False)
+        finally:
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+    return run
+
+
 SYSTEMS = {"anta": lambda symptom: run_agent(symptom, verbose=False),
            "anta_v1": lambda symptom: run_agent(symptom, verbose=False),  # label for the pre-extension agent
            "llm_only": run_llm_only,
-           "react": run_react}
+           "react": run_react,
+           "anta_ranked": _variant({"ANTA_PLANNER": "ranked", "ANTA_EXPLAIN": "off"}),
+           "anta_random": _variant({"ANTA_PLANNER": "random", "ANTA_EXPLAIN": "off"}),
+           "anta_ranked_noelim": _variant({"ANTA_PLANNER": "ranked", "ANTA_EXPLAIN": "off",
+                                           "ANTA_ABLATE": "no_elimination"}),
+           "anta_ranked_noprec": _variant({"ANTA_PLANNER": "ranked", "ANTA_EXPLAIN": "off",
+                                           "ANTA_ABLATE": "no_preconditions"}),
+           "anta_llama3b": _variant({"ANTA_MODEL": "llama3.2:3b"})}
 
 
 def healthy() -> bool:
