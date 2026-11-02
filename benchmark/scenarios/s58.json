@@ -1,0 +1,32 @@
+{
+  "id": "s58",
+  "description": "Router drops 10% of packets on its core side (final batch)",
+  "tier": "E_final",
+  "split": "final",
+  "symptom": "Pages occasionally stall for a few seconds.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "link_degradation",
+    "device": "router",
+    "mechanism": "netem",
+    "subnet": "10.10.2.",
+    "loss_pct": 10
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L3",
+    "cause": "link_degradation",
+    "evidence_required": [
+      "link_degraded:router"
+    ]
+  },
+  "remediation": {
+    "action": "remove_netem",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

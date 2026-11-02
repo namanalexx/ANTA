@@ -1,0 +1,31 @@
+{
+  "id": "s52",
+  "description": "Router FORWARD policy set to DROP (final batch)",
+  "tier": "E_final",
+  "split": "final",
+  "symptom": "Nothing passes through the router.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "firewall_block",
+    "device": "router",
+    "mechanism": "iptables_policy",
+    "chain": "FORWARD"
+  },
+  "ground_truth": {
+    "device": "router",
+    "layer": "L4",
+    "cause": "firewall_block",
+    "evidence_required": [
+      "fw_has_drop:router"
+    ]
+  },
+  "remediation": {
+    "action": "restore_policy",
+    "device": "router"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

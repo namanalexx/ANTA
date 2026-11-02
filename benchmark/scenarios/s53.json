@@ -1,0 +1,34 @@
+{
+  "id": "s53",
+  "description": "Firewall drops all UDP (final batch)",
+  "tier": "E_final",
+  "split": "final",
+  "symptom": "Name lookups for web.anta.local fail from the client.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "firewall_block",
+    "device": "firewall",
+    "mechanism": "iptables",
+    "chain": "FORWARD",
+    "protocol": "udp",
+    "port": null,
+    "action": "DROP"
+  },
+  "ground_truth": {
+    "device": "firewall",
+    "layer": "L4",
+    "cause": "firewall_block",
+    "evidence_required": [
+      "fw_has_drop:firewall"
+    ]
+  },
+  "remediation": {
+    "action": "remove_firewall_rule",
+    "device": "firewall"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

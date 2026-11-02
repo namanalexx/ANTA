@@ -174,7 +174,7 @@ def main(argv: list) -> int:
     if split != "all":
         scenarios = [s for s in scenarios if s["split"] == split]
     else:  # the out-of-library stress scenarios are only run when asked for explicitly
-        scenarios = [s for s in scenarios if s["split"] not in ("stress", "stress_test")]
+        scenarios = [s for s in scenarios if s["split"] not in ("stress", "stress_test", "final")]
     if only:
         scenarios = [s for s in scenarios if s["id"] in only]
     con = connect()

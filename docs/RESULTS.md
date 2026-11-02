@@ -1,6 +1,6 @@
 # ANTA results
 
-Generated 2026-10-29 19:36 from `experiments/results/anta_bench.sqlite`.
+Generated 2026-11-02 07:54 from `experiments/results/anta_bench.sqlite`.
 
 ## Held-out test split (19 scenarios)
 
@@ -33,6 +33,16 @@ s36-s45 shaped the extension (coverage evidence); s46-s51 were held out before t
 | ANTA before the fault-type extension | 16 | 69% | **0%** | 0%-19% | 11 | 12.9 | 29.0 |
 | ANTA (final) | 16 | 100% | **100%** | 81%-100% | 0 | 8.0 | 16.4 |
 
+## Final held-out batch (never tuned on)
+
+
+
+| System | n | Detection | Root-cause accuracy | 95% CI | Confidently wrong | Tool calls | Seconds |
+|---|---|---|---|---|---|---|---|
+| LLM-only (no tools) | 10 | 90% | **20%** | 6%-51% | 0 | 0.0 | 5.9 |
+| ReAct (same tools) | 10 | 90% | **30%** | 11%-60% | 0 | 7.0 | 27.9 |
+| ANTA (final) | 10 | 100% | **100%** | 72%-100% | 0 | 10.6 | 21.7 |
+
 Held-out s46-s51, before the extension: 0/6 correct.
 
 Held-out s46-s51, after the extension: 6/6 correct.
@@ -41,15 +51,15 @@ Held-out s46-s51, after the extension: 6/6 correct.
 
 | Fault type | Scenarios | Fixed | Regressions |
 |---|---|---|---|
-| broken_route | 8 | 8 | 0 |
-| dns_failure | 5 | 5 | 0 |
-| firewall_block | 12 | 12 | 0 |
-| interface_down | 8 | 8 | 0 |
-| link_degradation | 8 | 8 | 0 |
-| service_failure | 4 | 4 | 0 |
-| **all** | 45 | 45 | 0 |
+| broken_route | 9 | 9 | 0 |
+| dns_failure | 6 | 6 | 0 |
+| firewall_block | 14 | 14 | 0 |
+| interface_down | 9 | 9 | 0 |
+| link_degradation | 10 | 10 | 0 |
+| service_failure | 5 | 5 | 0 |
+| **all** | 53 | 53 | 0 |
 
-Actions taken on healthy networks: 0/6.
+Actions taken on healthy networks: 0/8.
 
 ## Shadow-network gate
 

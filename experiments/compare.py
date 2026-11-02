@@ -25,8 +25,9 @@ def main() -> None:
     systems = [s for s in ORDER if any(r["system"] == s for r in rows)]
     csv_rows = []
     for label, pick in (("TEST (headline)", lambda r: r["split"] == "test"),
+                        ("FINAL held-out batch", lambda r: r["split"] == "final"),
                         ("DEV (tuned on)", lambda r: r["split"] == "dev"),
-                        ("ALL 35", lambda r: r["split"] not in ("stress", "stress_test"))):
+                        ("ALL 35", lambda r: r["split"] not in ("stress", "stress_test", "final"))):
         print(f"\n=== {label} ===")
         print(f"  {'system':10s} {'n':>3s} {'detect':>7s} {'RCA':>5s} {'95% CI':>13s} {'device':>7s} {'layer':>6s} "
               f"{'evid':>5s} {'calls':>6s} {'sec':>6s}")

@@ -1,0 +1,31 @@
+{
+  "id": "s54",
+  "description": "DNS record points at the firewall's address (final batch)",
+  "tier": "E_final",
+  "split": "final",
+  "symptom": "web.anta.local shows the wrong site.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "dns_failure",
+    "device": "dns-server",
+    "mechanism": "dns_wrong_ip",
+    "wrong_ip": "10.10.3.2"
+  },
+  "ground_truth": {
+    "device": "dns-server",
+    "layer": "APP",
+    "cause": "dns_failure",
+    "evidence_required": [
+      "dns_ip_correct"
+    ]
+  },
+  "remediation": {
+    "action": "restore_dns_record",
+    "device": "dns-server"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

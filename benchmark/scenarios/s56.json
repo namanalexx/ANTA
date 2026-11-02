@@ -1,0 +1,32 @@
+{
+  "id": "s56",
+  "description": "Web server lost its default route (final batch)",
+  "tier": "E_final",
+  "split": "final",
+  "symptom": "The web server accepts connections but nothing comes back.",
+  "topology": "standard_5node",
+  "injected_fault": {
+    "type": "broken_route",
+    "device": "web-server",
+    "mechanism": "route_delete",
+    "dest": "default"
+  },
+  "ground_truth": {
+    "device": "web-server",
+    "layer": "L3",
+    "cause": "broken_route",
+    "evidence_required": [
+      "route_complete:web-server"
+    ]
+  },
+  "remediation": {
+    "action": "restore_route",
+    "device": "web-server",
+    "dest": "default"
+  },
+  "verification_tests": [
+    "ping_success",
+    "http_200",
+    "dns_resolves"
+  ]
+}

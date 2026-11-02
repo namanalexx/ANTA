@@ -28,6 +28,7 @@ LAYER = {"broken_route": "L3", "firewall_block": "L4", "dns_failure": "APP", "se
          "interface_down": "L2", "link_degradation": "L3", "no_fault": "-"}
 STRESS = {f"s{n}" for n in range(36, 46)}  # out-of-library scenarios, kept out of the headline numbers
 STRESS_TEST = {f"s{n}" for n in range(46, 52)}  # fresh held-out scenarios for the extended agent
+FINAL_SET = {f"s{n}" for n in range(52, 62)}  # final held-out batch, run once on the frozen system
 
 
 def remediation(f):
@@ -123,6 +124,25 @@ SPECS = [
      {"type": "link_degradation", "device": "client", "mechanism": "netem", "subnet": "10.10.1.", "loss_pct": 50}, ["link_degraded:client"]),
     ("s51", "D_unknown", "web.anta.local cannot be resolved from the client.", "DNS server's network interface is down (fresh wording)",
      {"type": "interface_down", "device": "dns-server", "mechanism": "iface_down", "subnet": "10.10.3."}, ["iface_up:dns-server"]),
+    ("s52", "E_final", "Nothing passes through the router.", "Router FORWARD policy set to DROP (final batch)",
+     {"type": "firewall_block", "device": "router", "mechanism": "iptables_policy", "chain": "FORWARD"}, ["fw_has_drop:router"]),
+    ("s53", "E_final", "Name lookups for web.anta.local fail from the client.", "Firewall drops all UDP (final batch)",
+     fw("firewall", "udp"), ["fw_has_drop:firewall"]),
+    ("s54", "E_final", "web.anta.local shows the wrong site.", "DNS record points at the firewall's address (final batch)",
+     {"type": "dns_failure", "device": "dns-server", "mechanism": "dns_wrong_ip", "wrong_ip": "10.10.3.2"}, ["dns_ip_correct"]),
+    ("s55", "E_final", "Opening the site gives connection refused.", "Web service stopped (final batch)",
+     stop("web-server", "nginx", "service_failure"), ["svc_up:web-server:web"]),
+    ("s56", "E_final", "The web server accepts connections but nothing comes back.", "Web server lost its default route (final batch)",
+     route("web-server", "default"), ["route_complete:web-server"]),
+    ("s57", "E_final", "Servers are unreachable through the router.", "Router's core-side interface is down (final batch)",
+     {"type": "interface_down", "device": "router", "mechanism": "iface_down", "subnet": "10.10.2."}, ["iface_up:router"]),
+    ("s58", "E_final", "Pages occasionally stall for a few seconds.", "Router drops 10% of packets on its core side (final batch)",
+     {"type": "link_degradation", "device": "router", "mechanism": "netem", "subnet": "10.10.2.", "loss_pct": 10}, ["link_degraded:router"]),
+    ("s59", "E_final", "Name lookups for web.anta.local often fail.", "DNS server loses 60% of packets (final batch)",
+     {"type": "link_degradation", "device": "dns-server", "mechanism": "netem", "subnet": "10.10.3.", "loss_pct": 60}, ["link_degraded:dns-server"]),
+    ("s60", "E_final", "Users say the site feels slow sometimes. Is anything wrong?", "Healthy network (final batch control)", NONE, []),
+    ("s61", "E_final", "Some users report errors on web.anta.local.", "Harmless firewall rule on tcp/3306 (final batch control)",
+     fw("firewall", "tcp", 3306, typ="no_fault"), []),
 ]
 
 
@@ -134,16 +154,16 @@ def main() -> None:
         if typ != "no_fault":
             types.add(typ)
         sc = {
-            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else ("stress" if sid in STRESS else ("stress_test" if sid in STRESS_TEST else "test")),
+            "id": sid, "description": desc, "tier": tier, "split": "dev" if sid in DEV else ("stress" if sid in STRESS else ("stress_test" if sid in STRESS_TEST else ("final" if sid in FINAL_SET else "test"))),
             "symptom": symptom, "topology": "standard_5node", "injected_fault": fault,
             "ground_truth": {"device": "none" if typ == "no_fault" else fault.get("device"), "layer": LAYER[typ], "cause": typ,
                              "evidence_required": req},
             "remediation": remediation(fault), "verification_tests": VERIFY,
         }
         (OUT / f"{sid}.json").write_text(json.dumps(sc, indent=2))
-    assert len(SPECS) == 51 and len(types) <= 6, "scope cap violated"
+    assert len(SPECS) == 61 and len(types) <= 6, "scope cap violated"
     print(f"wrote {len(SPECS)} scenarios to {OUT}")
-    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV) - len(STRESS) - len(STRESS_TEST)} stress={len(STRESS)} stress_test={len(STRESS_TEST)}")
+    print(f"fault types used: {sorted(types)} ({len(types)} of max 6); dev={len(DEV)} test={len(SPECS) - len(DEV) - len(STRESS) - len(STRESS_TEST) - len(FINAL_SET)} stress={len(STRESS)} stress_test={len(STRESS_TEST)} final={len(FINAL_SET)}")
 
 
 if __name__ == "__main__":

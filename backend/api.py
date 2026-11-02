@@ -216,7 +216,7 @@ def results():
         if not rows:
             continue
         entry: dict = {"system": s}
-        for label, pick in (("test", lambda r: r["split"] == "test"), ("all", lambda r: r["split"] not in ("stress", "stress_test"))):
+        for label, pick in (("test", lambda r: r["split"] == "test"), ("all", lambda r: r["split"] not in ("stress", "stress_test", "final"))):
             sub = [r for r in rows if pick(r)]
             if sub:
                 a = _agg(sub)
