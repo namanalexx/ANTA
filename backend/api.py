@@ -51,12 +51,22 @@ class RunRequest(BaseModel):
     inject: bool = True
 
 
+def _warm() -> None:
+    """Load the model at start-up so the first click in the dashboard is not a 40 s freeze."""
+    try:
+        from agent import llm
+        llm.chat_json("Reply with JSON only.", '{"ok": true}')
+    except Exception:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         TOPO["live"] = to_dict(TOOLS["get_topology"]["fn"]())
     except Exception:
         pass
+    threading.Thread(target=_warm, daemon=True).start()
     yield
 
 
@@ -233,4 +243,23 @@ def results():
                 "fidelity": [sum(r["fidelity"] for r in g), len(g)]}
     except Exception:
         pass
+    try:  # before/after on the unseen fault types
+        st: dict = {}
+        for label, system in (("v1", "anta_v1"), ("v2", "anta")):
+            rows = [dict(r) for r in con.execute(
+                "SELECT * FROM runs WHERE system = ? AND split IN ('stress', 'stress_test')", (system,))]
+            if rows:
+                st[label] = {"n": len(rows), "correct": sum(r["rca_ok"] for r in rows),
+                             "confidently_wrong": sum(1 for r in rows if not r["rca_ok"] and r["status"] == "confirmed")}
+        out["stress"] = st or None
+    except Exception:
+        out["stress"] = None
+    try:  # ablation table, if the ablation report has been generated
+        import csv as _csv
+        path = agent.ROOT / "experiments" / "results" / "ablations.csv"
+        out["ablations"] = ([{**r, "rca": float(r["rca"]), "confidently_wrong": int(r["confidently_wrong"]),
+                              "calls": float(r["calls"]), "sec": float(r["sec"])}
+                             for r in _csv.DictReader(path.open())] if path.exists() else [])
+    except Exception:
+        out["ablations"] = []
     return out

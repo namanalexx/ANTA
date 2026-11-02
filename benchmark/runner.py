@@ -80,6 +80,8 @@ def parse(argv: list) -> dict:
 
 def main(argv: list) -> int:
     o = parse(argv)
+    from .lab_lock import acquire
+    acquire('benchmark.runner')
     scenarios = [json.loads(p.read_text()) for p in sorted(SCEN_DIR.glob("s*.json"))]
     if not scenarios:
         print("no scenarios found. Run: python3 -m benchmark.make_scenarios")

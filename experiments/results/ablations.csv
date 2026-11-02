@@ -1,0 +1,7 @@
+variant,description,n,rca,confidently_wrong,calls,sec
+anta,"LLM planner (qwen2.5:7b), full evidence model",51,1.0,0,9.78,20.67
+anta_ranked,"ranking only, no LLM",51,1.0,0,10.43,6.73
+anta_random,"random test order, no LLM",51,1.0,0,18.33,19.23
+anta_ranked_noelim,"ranking only, NO elimination rule",51,0.9608,0,11.84,7.94
+anta_ranked_noprec,"ranking only, NO precondition rule",51,0.9804,1,10.29,6.52
+anta_llama3b,LLM planner (llama3.2:3b),51,1.0,0,10.94,19.83

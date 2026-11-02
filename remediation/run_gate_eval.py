@@ -161,6 +161,8 @@ def report(con) -> None:
 
 
 def main(argv: list) -> int:
+    from benchmark.lab_lock import acquire
+    acquire("remediation.run_gate_eval")
     split, only, mode, force = "test", None, "both", "--force" in argv
     if "--split" in argv:
         split = argv[argv.index("--split") + 1]

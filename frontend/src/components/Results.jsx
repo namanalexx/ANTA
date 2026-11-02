@@ -68,6 +68,34 @@ export default function Results() {
           <p>Shadow reproduced the live symptoms: <b>{g.fidelity[0]}/{g.fidelity[1]}</b></p>
         </Card>
       )}
+      {data.stress && (
+        <Card title="Unseen fault types (interface down, packet loss/delay): before vs after the extension">
+          <table>
+            <thead><tr><th>Agent</th><th>Scenarios</th><th>Correct</th><th>Confidently wrong</th></tr></thead>
+            <tbody>
+              {[["v1", "Before (no hypotheses for these faults)"], ["v2", "After (extended)"]]
+                .filter(([k]) => data.stress[k])
+                .map(([k, name]) => (
+                  <tr key={k}><td>{name}</td><td>{data.stress[k].n}</td><td><b>{data.stress[k].correct}</b></td>
+                    <td>{data.stress[k].confidently_wrong}</td></tr>
+                ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      {data.ablations && data.ablations.length > 0 && (
+        <Card title="Ablations: what carries accuracy and efficiency?">
+          <table>
+            <thead><tr><th>Variant</th><th>RCA</th><th>Confidently wrong</th><th>Calls</th><th>Sec</th></tr></thead>
+            <tbody>
+              {data.ablations.map((a) => (
+                <tr key={a.variant}><td>{a.description}</td><td><b>{Math.round(a.rca * 100)}%</b></td>
+                  <td>{a.confidently_wrong}</td><td>{a.calls}</td><td>{a.sec}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </div>
   );
 }

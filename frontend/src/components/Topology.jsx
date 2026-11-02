@@ -28,6 +28,7 @@ export default function Topology({ topo, hyps, diagnosis, gate, activeTest }) {
     const active = new Set(testNodes(activeTest));
     const heat = (n) => {
       const c = d3.max(hyps.filter((h) => h.device === n && h.cause !== "no_fault"), (h) => h.confidence) || 0;
+      if (fixed) return "#1e293b";  // once repaired, no node should look hot any more
       return d3.interpolateRgb("#1e293b", "#ef4444")(Math.min(1, c * 1.1));
     };
     const dg = diagnosis && diagnosis.diagnosis;
