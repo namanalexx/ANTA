@@ -1,7 +1,7 @@
 # Evaluation methodology
 
 ## Benchmark
-51 JSON scenarios (injected fault, symptom wording, ground truth, required evidence).
+61 JSON scenarios (injected fault, symptom wording, ground truth, required evidence).
 
 | Split | n | Purpose |
 |---|---|---|
@@ -9,6 +9,7 @@
 | test | 19 | headline split (see disclosures) |
 | stress | 10 | interface-down and packet-loss/delay faults the first agent had no hypotheses for |
 | stress_test | 6 | fresh scenarios of those two types, held out before the extension |
+| final | 10 | final held-out batch across all six fault types, run once on the frozen system |
 
 Tiers: seen faults, rephrased symptoms, variants (other devices, ports, mechanisms), controls (healthy network, harmless firewall rules), and unknown fault types. The six fault types are the hard cap.
 
@@ -27,6 +28,7 @@ Both use the same local model and, where applicable, the same 11 tools and the s
 4. Stress test, stage 1: the agent without hypotheses for interface-down and loss/delay faults scored 0/16 (11 confidently wrong, 5 hedged). Results were archived as `anta_v1` before any change.
 5. Extension (hypotheses, interface/netem inspection, precondition rule). First pass on the held-out s46-s51: 5/6 correct, 0 confidently wrong. It also caused a regression on two in-library scenarios (ICMP-drop firewall rules), which led to the elimination rule. After that fix: 51/51. **The elimination fix was informed by two of the held-out scenarios, so the clean held-out evidence is the first-pass 5/6 and the final held-out batch.**
 6. s36-s45 shaped the extension, so they show coverage, not generalisation.
+7. **Final held-out batch:** ten new scenarios (s52-s61) covering all six fault types, written after everything above and run once, with both baselines, on the code tagged `anta-final-frozen`. ANTA 10/10 (95% CI 72-100%), ReAct 3/10, LLM-only 2/10. The harness (scenario files, report scripts) changed after the tag; the agent, tools and remediation code did not (`git diff anta-final-frozen -- agent network` is empty). With n=10 a perfect score only supports "at least about 72%".
 
 ## Statistics
 Wilson 95% intervals. n is small (19 on the headline split; a perfect score only supports "at least about 83%"). One run per scenario at temperature 0, so variance across LLM sampling is not measured.

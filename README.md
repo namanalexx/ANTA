@@ -54,7 +54,8 @@ All numbers regenerate with `python3 -m experiments.final_report` (written to [d
 | ReAct with the same 11 tools | 42% | 23-64% |
 | **ANTA** | **100%** | 83-100% |
 
-* **Benchmark:** 51 automated scenarios (35 main + 16 on interface and link faults). ANTA is 51/51 on its own benchmark. See the methodology for what that does and does not show.
+* **Benchmark:** 61 automated scenarios (35 main, 16 on interface and link faults, 10 in a final held-out batch). ANTA is 61/61 on its own benchmark; see the methodology for what that does and does not show.
+* **Final held-out batch** (10 scenarios across all six fault types, written last, run once on the tagged frozen code): ANTA 10/10 (95% CI 72-100%), ReAct 3/10, LLM-only 2/10.
 * **Unseen fault types:** before the extension ANTA scored 0/16 on interface-down and packet-loss/delay faults (11 confidently wrong); after adding hypotheses it scored 16/16.
 * **Remediation:** 45/45 faults repaired and verified with 0 regressions; 0 actions on healthy networks. The regression detector is self-tested against deliberately bad fixes.
 * **Shadow gate:** 22/22 correct fixes applied, 22/22 wrong-diagnosis fixes blocked, 3/3 deliberately unsafe fixes blocked with the live network untouched (the same fixes caused damage when ungated). The shadow reproduced the live symptoms 47/47 times.
@@ -91,7 +92,7 @@ The Ollama service must be reachable from WSL2 at `localhost:11434` (WSL mirrore
 network/       lab (compose files, device image), fault injection, 11 diagnostic tools (+ 48-check gate)
 agent/         LangGraph agent, hypothesis/evidence model, planner, verifier
 remediation/   action playbook, shadow network, gated pipeline, evaluations, regression self-test
-benchmark/     51 JSON scenarios, runner, evaluator (SQLite)
+benchmark/     61 JSON scenarios, runner, evaluator (SQLite)
 experiments/   baselines (LLM-only, ReAct), comparison, ablations, results
 backend/       FastAPI server-sent-events API      frontend/   React + D3 dashboard
 scripts/       start_lab, start_dashboard, demo_checklist, reproduce, run_ablations

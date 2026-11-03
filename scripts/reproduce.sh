@@ -12,11 +12,15 @@ python3 -m benchmark.runner --system anta --force | tail -45
 python3 -m benchmark.runner --system anta --split stress --force | tail -3
 python3 -m benchmark.runner --system anta --split stress_test --force | tail -3
 python3 -m benchmark.runner --system llm_only --force | tail -3
+python3 -m benchmark.runner --system anta --split final --force | tail -3
+python3 -m benchmark.runner --system llm_only --split final --force | tail -3
 [ $QUICK -eq 0 ] && python3 -m benchmark.runner --system react --force | tail -3
+[ $QUICK -eq 0 ] && python3 -m benchmark.runner --system react --split final --force | tail -3
 python3 -m remediation.selftest
 python3 -m remediation.run_eval --force
 python3 -m remediation.run_eval --split stress --force
 python3 -m remediation.run_eval --split stress_test --force
+python3 -m remediation.run_eval --split final --force
 [ $QUICK -eq 0 ] && python3 -m remediation.run_gate_eval --split test --force
 python3 -m experiments.compare
 python3 -m experiments.final_report
