@@ -1,6 +1,6 @@
 # ANTA results
 
-Generated 2026-11-02 07:54 from `experiments/results/anta_bench.sqlite`.
+Generated 2026-11-03 07:15 from `experiments/results/anta_bench.sqlite`.
 
 ## Held-out test split (19 scenarios)
 
