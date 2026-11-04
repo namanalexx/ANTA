@@ -1,6 +1,16 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-export function Card({ title, children, right }) {
+export function Mark({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M5 9h2M11 9l3-4M11 9l3 4" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <circle cx="3" cy="9" r="2.2" fill="currentColor" /><circle cx="9" cy="9" r="2.2" fill="currentColor" />
+      <circle cx="15" cy="4" r="2.2" fill="currentColor" /><circle cx="15" cy="14" r="2.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function Card({ title, right, children }) {
   return (
     <section className="card">
       <div className="card-h"><h3>{title}</h3>{right}</div>
@@ -9,84 +19,98 @@ export function Card({ title, children, right }) {
   );
 }
 
+const pc = (x) => `${Math.round(x * 100)}%`;
+
 export function Hypotheses({ hyps }) {
   if (!hyps.length) return <p className="muted">No investigation yet. Pick a scenario and press Run.</p>;
   const sorted = [...hyps].sort((a, b) => b.confidence - a.confidence);
+  const live = sorted.filter((h) => h.status !== "rejected");
+  const out = sorted.filter((h) => h.status === "rejected");
   return (
     <div>
-      {sorted.map((h) => (
-        <div key={h.id} className={`hyp ${h.status}`}>
+      {live.map((h, i) => (
+        <div key={h.id} className={`hyp ${i === 0 ? "lead" : ""}`}>
           <div className="hyp-top">
-            <span className="chip">{h.id}</span>
-            <span className="hyp-name">{h.cause} <em>@ {h.device}</em></span>
-            <span className="pct">{(h.confidence * 100).toFixed(0)}%</span>
+            <span className="id">{h.id}</span>
+            <span className="nm">{h.cause.replace(/_/g, " ")} <em>@ {h.device}</em></span>
+            <span className="pc">{h.status === "confirmed" ? "✓ " : ""}{pc(h.confidence)}</span>
           </div>
-          <div className="bar"><div className="fill" style={{ width: `${Math.max(1, h.confidence * 100)}%` }} /></div>
-          <div className="hyp-desc">{h.description}</div>
+          <div className="bar"><i style={{ width: `${Math.max(1, h.confidence * 100)}%` }} /></div>
+          <div className="ds">{h.description}</div>
         </div>
       ))}
+      {out.length > 0 && (
+        <details className="out">
+          <summary>Ruled out ({out.length})</summary>
+          {out.map((h) => (
+            <div key={h.id} className="out-row">
+              <span className="mono small">{h.id}</span>
+              <span className="nm">{h.cause.replace(/_/g, " ")} @ {h.device}</span>
+              <span className="pc">{pc(h.confidence)}</span>
+            </div>
+          ))}
+        </details>
+      )}
     </div>
   );
 }
 
 export function Timeline({ steps, activeTest }) {
-  if (!steps.length) return <p className="muted">Each step shows what the LLM chose and why (italic), then what the tool measured (green).</p>;
+  const box = useRef(null);
+  useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [steps.length, activeTest]);
+  if (!steps.length) return <p className="muted">Each step shows what the LLM chose and why (italic), then what the tool measured.</p>;
   return (
-    <ol className="timeline">
+    <ol className="tl" ref={box}>
       {steps.map((s, i) => (
         <li key={i}>
-          <div className="t-top">
-            <b>{s.step}. {s.test}</b>
-            <span className={`badge ${s.source}`}>{s.source === "confirm" ? "rule: confirm" : s.source}</span>
-            {!s.evidence && activeTest === s.test && <span className="spin" />}
+          <span className="n">{String(s.step).padStart(2, "0")}</span>
+          <div>
+            <div className="t">{s.test}
+              <span className={`badge ${s.source}`}>{s.source === "confirm" ? "rule" : s.source}</span>
+              {!s.evidence && activeTest === s.test && <span className="spin" />}
+            </div>
+            <div className="d">{s.description}</div>
+            {s.reason && <div className="r">“{s.reason}”</div>}
+            {s.evidence && <div className="e"><code>{s.evidence.id}</code>{s.evidence.summary}</div>}
           </div>
-          <div className="muted small">{s.description}</div>
-          {s.reason && <div className="reason">LLM: “{s.reason}”</div>}
-          {s.evidence && <div className="evidence"><code>{s.evidence.id}</code> {s.evidence.summary}</div>}
         </li>
       ))}
     </ol>
   );
 }
 
-function stateOf(done, active, fail, skip) {
-  return fail ? "fail" : done ? "done" : active ? "active" : skip ? "skip" : "idle";
-}
-
 export function GatePanel({ gate }) {
-  const g = gate || {};
-  const sh = g.shadow || {};
-  const lv = g.live || {};
-  const blocked = g.decision && g.decision.decision.startsWith("blocked");
+  const g = gate || {}, sh = g.shadow || {}, lv = g.live || {};
+  const blocked = !!(g.decision && g.decision.decision.startsWith("blocked"));
+  const applied = !!(lv.result && lv.result.fixed && !lv.result.regression);
   const items = [
-    { label: "Fix proposed (from the playbook)", st: stateOf(!!g.action),
-      detail: g.action && (<><span>{g.action.description}</span>{g.action.commands.map((c, i) => <code className="cmd" key={i}>{c}</code>)}</>) },
-    { label: "Live state cloned onto the shadow stack", st: stateOf(sh.cloned, sh.cloning) },
-    { label: "Shadow reproduces the live symptoms", st: stateOf(sh.fidelity && sh.fidelity.ok, false, sh.fidelity && !sh.fidelity.ok),
-      detail: sh.fidelity && !sh.fidelity.ok && <span>Shadow anomalies differ from live: the verdict is inconclusive.</span> },
-    { label: "Fix tested on the shadow (verify + regression check)",
-      st: stateOf(sh.tested && sh.tested.fixed && !sh.tested.regression, false, sh.tested && !(sh.tested.fixed && !sh.tested.regression), sh.fidelity && !sh.fidelity.ok),
-      detail: sh.tested && (<span>fixed: {String(sh.tested.fixed)} · regression: {String(sh.tested.regression)} {sh.tested.unintended.length ? "· " + sh.tested.unintended[0] : ""}</span>) },
-    { label: "Gate decision", st: stateOf(g.decision && !blocked, false, blocked),
-      detail: g.decision && <span>{g.decision.decision}: {g.decision.reason}</span> },
+    { label: "Fix proposed from the playbook", st: g.action ? "done" : "idle",
+      detail: g.action && (<><div>{g.action.description}</div>{g.action.commands.map((c, i) => <code className="cmd" key={i}>{c}</code>)}</>) },
+    { label: "Live state cloned onto the shadow network", st: sh.cloned ? "done" : sh.cloning ? "active" : "idle" },
+    { label: "Shadow reproduces the live symptoms", st: sh.fidelity ? (sh.fidelity.ok ? "done" : "fail") : "idle",
+      detail: sh.fidelity && !sh.fidelity.ok && "The shadow differs from live, so the verdict is inconclusive." },
+    { label: "Fix tested on the shadow: verify and regression check",
+      st: sh.tested ? (sh.tested.fixed && !sh.tested.regression ? "done" : "fail") : (sh.fidelity && !sh.fidelity.ok ? "skip" : "idle"),
+      detail: sh.tested && `fixed: ${sh.tested.fixed} · regression: ${sh.tested.regression}${sh.tested.unintended.length ? " · " + sh.tested.unintended[0] : ""}` },
+    { label: "Gate decision", st: g.decision ? (blocked ? "fail" : "done") : "idle",
+      detail: g.decision && `${g.decision.decision}: ${g.decision.reason}` },
     { label: "Applied to live, verified, regression-checked",
-      st: stateOf(lv.result && lv.result.fixed && !lv.result.regression, lv.applying, lv.result && !(lv.result.fixed && !lv.result.regression), blocked),
-      detail: blocked ? <span>Skipped. Live network untouched: {String(lv.untouched)}</span>
-        : lv.result && <span>fixed: {String(lv.result.fixed)} · regression: {String(lv.result.regression)}</span> },
+      st: blocked ? "skip" : lv.result ? (applied ? "done" : "fail") : lv.applying ? "active" : "idle",
+      detail: blocked ? `Skipped. Live network untouched: ${String(lv.untouched)}` : lv.result && `fixed: ${lv.result.fixed} · regression: ${lv.result.regression}` },
   ];
-  const icon = { idle: "○", active: "◔", done: "✓", fail: "✗", skip: "–" };
+  const icon = { done: "✓", fail: "✕", skip: "–", idle: "", active: <span className="spin" /> };
   return (
     <div>
       <ul className="gate">
         {items.map((it, i) => (
           <li key={i} className={`s-${it.st}`}>
-            <span className="ico">{icon[it.st]}</span>
-            <div><div>{it.label}</div><div className="muted small">{it.detail}</div></div>
+            <span className="mk">{icon[it.st]}</span>
+            <div><div className="lb">{it.label}</div>{it.detail ? <div className="dt">{it.detail}</div> : null}</div>
           </li>
         ))}
       </ul>
-      {blocked && <div className="verdict good">Blocked by the shadow gate. The live network was never touched.</div>}
-      {lv.result && lv.result.fixed && !lv.result.regression && <div className="verdict good">Fix applied and verified. No regression.</div>}
+      {blocked && <div className="verdict no">✕ Blocked by the shadow gate. The live network was never touched.</div>}
+      {applied && <div className="verdict ok">✓ Fix applied and verified. No regression.</div>}
     </div>
   );
 }
